@@ -50,6 +50,7 @@
   const mapButton = $("#mapButton");
 
   let currentGps = null;
+  let currentAnalysis = null;
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -77,8 +78,9 @@
     0x9204: "ExposureCompensation",
     0x9207: "MeteringMode",
     0x9209: "Flash",
-    0xA402: "ExposureProgram",
-    0xA403: "ExposureMode",
+    0x8822: "ExposureProgram",
+    0xA402: "ExposureMode",
+    0xA403: "WhiteBalance",
     0xA406: "SceneCaptureType",
     0xA401: "CustomRendered",
     0xA404: "DigitalZoomRatio",
@@ -407,6 +409,31 @@
 
       currentGps = (lat !== null && lon !== null) ? {lat, lon, bearing} : null;
 
+      currentAnalysis = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+        name: file.name,
+        camera: [make, model].filter(Boolean).join(" ") || "Nicht vorhanden",
+        lens: exif.LensModel || "Nicht vorhanden",
+        shutter: exposureText,
+        aperture: apertureText,
+        iso: Number.isFinite(iso) && iso > 0 ? `ISO ${iso}` : "Nicht vorhanden",
+        focal: formatFocal(focal),
+        dimensions: exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden",
+        date: exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden",
+        author: exif.Artist || exif.CameraOwnerName || "Nicht vorhanden",
+        copyright: exif.Copyright || "Nicht vorhanden",
+        metering: meteringName(exif.MeteringMode),
+        whiteBalance: whiteBalanceName(exif.WhiteBalance),
+        flash: flashName(exif.Flash),
+        exposureProgram: exposureProgramName(exif.ExposureProgram),
+        software: exif.Software || "Nicht vorhanden",
+        altitude: formatAltitude(Number(exif.GPSAltitude), exif.GPSAltitudeRef),
+        bearing: Number.isFinite(bearing) ? bearing : null,
+        lat, lon,
+        address: "",
+        hasExif: Object.keys(exif).length > 0
+      };
+
       if (currentGps) {
         setText("coordinates", `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
         setText("locationShort", "GPS vorhanden");
@@ -414,6 +441,7 @@
         $("#locationDetails").textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         mapButton.disabled = false;
         const address = await reverseGeocode(lat, lon);
+        currentAnalysis.address = address;
         $("#locationName").textContent = address;
         $("#locationDetails").textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         $("#exifStatus").textContent = "EXIF + GPS gefunden";
@@ -477,6 +505,265 @@
 
     frame.scrollIntoView({behavior:"smooth", block:"center"});
   });
+
+
+  // -----------------------------
+  // Local photo archive
+  // -----------------------------
+  const STORAGE_KEY = "fotografie-stuttgart-analyses-v2";
+
+  function getSavedAnalyses() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveAnalyses(items) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 30)));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+    }[char]));
+  }
+
+  function renderSavedPortfolio() {
+    const wrap = $("#savedPortfolio");
+    const grid = $("#savedPortfolioGrid");
+    if (!wrap || !grid) return;
+
+    const items = getSavedAnalyses();
+    wrap.classList.toggle("hidden", items.length === 0);
+    grid.innerHTML = "";
+
+    items.forEach(item => {
+      const card = document.createElement("article");
+      card.className = "saved-card";
+      card.innerHTML = `
+        <div class="saved-card-top">
+          <span class="saved-type">${item.lat !== null && item.lon !== null ? "GPS" : "EXIF"}</span>
+          <button type="button" class="saved-remove" aria-label="Eintrag löschen" data-remove-id="${escapeHtml(item.id)}">×</button>
+        </div>
+        <strong>${escapeHtml(item.name)}</strong>
+        <span>${escapeHtml(item.camera)}</span>
+        <small>${escapeHtml(item.date)}${item.address ? " · " + escapeHtml(item.address) : ""}</small>
+        <button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Details →</button>
+      `;
+      grid.appendChild(card);
+    });
+
+    grid.querySelectorAll("[data-remove-id]").forEach(button => {
+      button.addEventListener("click", () => {
+        saveAnalyses(getSavedAnalyses().filter(item => item.id !== button.dataset.removeId));
+        renderSavedPortfolio();
+        renderLocations();
+      });
+    });
+
+    grid.querySelectorAll("[data-open-id]").forEach(button => {
+      button.addEventListener("click", () => {
+        const item = getSavedAnalyses().find(entry => entry.id === button.dataset.openId);
+        if (item && item.lat !== null && item.lon !== null) {
+          showLocationOnMap(item);
+          document.querySelector("#orte")?.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      });
+    });
+  }
+
+  $("#saveExifButton")?.addEventListener("click", () => {
+    if (!currentAnalysis) return;
+    const items = getSavedAnalyses().filter(item => item.name !== currentAnalysis.name || item.date !== currentAnalysis.date);
+    items.unshift(currentAnalysis);
+    saveAnalyses(items);
+    renderSavedPortfolio();
+    renderLocations();
+    $("#saveExifButton").textContent = "✓ Aufnahme gespeichert";
+    setTimeout(() => {
+      $("#saveExifButton").textContent = "Aufnahme merken";
+    }, 1800);
+  });
+
+  $("#clearSavedPhotos")?.addEventListener("click", () => {
+    if (!getSavedAnalyses().length) return;
+    localStorage.removeItem(STORAGE_KEY);
+    renderSavedPortfolio();
+    renderLocations();
+  });
+
+  // -----------------------------
+  // Aufnahmeorte explorer
+  // -----------------------------
+  function showLocationOnMap(item) {
+    const frame = $("#locationExplorerFrame");
+    const empty = $("#locationMapEmpty");
+    if (!frame || !empty || item?.lat == null || item?.lon == null) return;
+
+    const delta = 0.006;
+    const bbox = [
+      item.lon - delta, item.lat - delta,
+      item.lon + delta, item.lat + delta
+    ].join("%2C");
+
+    frame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${encodeURIComponent(item.lat)}%2C${encodeURIComponent(item.lon)}`;
+    frame.classList.remove("hidden");
+    empty.classList.add("hidden");
+  }
+
+  function renderLocations() {
+    const list = $("#locationList");
+    const count = $("#locationCount");
+    if (!list || !count) return;
+
+    const items = getSavedAnalyses().filter(item => Number.isFinite(item.lat) && Number.isFinite(item.lon));
+    count.textContent = `${items.length} ${items.length === 1 ? "Aufnahme" : "Aufnahmen"}`;
+
+    if (!items.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <span>◎</span>
+          <strong>Noch keine GPS-Aufnahmen</strong>
+          <p>Analysiere ein JPEG mit GPS im EXIF Lab und klicke anschließend auf „Aufnahme merken“.</p>
+          <a class="button ghost" href="#exif">Zum EXIF Lab</a>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = items.map((item, index) => `
+      <button class="location-item" type="button" data-location-id="${escapeHtml(item.id)}">
+        <span class="location-index">${String(index + 1).padStart(2, "0")}</span>
+        <span class="location-item-copy">
+          <strong>${escapeHtml(item.address || "GPS-Aufnahme")}</strong>
+          <small>${escapeHtml(item.name)} · ${escapeHtml(item.camera)}</small>
+          <small>${Number(item.lat).toFixed(5)}, ${Number(item.lon).toFixed(5)}</small>
+        </span>
+        <span class="location-arrow">→</span>
+      </button>
+    `).join("");
+
+    list.querySelectorAll("[data-location-id]").forEach(button => {
+      button.addEventListener("click", () => {
+        const item = items.find(entry => entry.id === button.dataset.locationId);
+        if (item) showLocationOnMap(item);
+      });
+    });
+  }
+
+  $("#refreshLocations")?.addEventListener("click", () => {
+    renderSavedPortfolio();
+    renderLocations();
+  });
+
+  // -----------------------------
+  // Portfolio lightbox
+  // -----------------------------
+  const modal = $("#photoModal");
+  const modalImage = $("#modalImage");
+  const modalTitle = $("#modalTitle");
+  const modalDescription = $("#modalDescription");
+  const modalMeta = $("#modalMeta");
+  let modalItems = [];
+  let modalIndex = 0;
+
+  function openPortfolioModal(index) {
+    const item = modalItems[index];
+    if (!item || !modal) return;
+    modalIndex = index;
+    modal.classList.remove("hidden");
+    document.body.classList.add("modal-open");
+
+    const image = item.querySelector("img");
+    const title = item.querySelector("h3");
+    const meta = [...item.querySelectorAll(".card-meta span")].map(el => el.textContent.trim());
+
+    if (image) {
+      modalImage.src = image.currentSrc || image.src;
+      modalImage.alt = image.alt || title?.textContent || "Portfolio-Foto";
+      modalImage.classList.remove("modal-placeholder");
+    } else {
+      modalImage.removeAttribute("src");
+      modalImage.alt = "";
+      modalImage.classList.add("modal-placeholder");
+      modalImage.style.background = getComputedStyle(item.querySelector(".photo-placeholder")).background;
+    }
+
+    modalTitle.textContent = title?.textContent || "Aufnahme";
+    modalDescription.textContent = image?.alt || "Aufnahme aus dem Fotografie-Stuttgart-Archiv.";
+    modalMeta.innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join("");
+  }
+
+  function closePortfolioModal() {
+    modal?.classList.add("hidden");
+    document.body.classList.remove("modal-open");
+  }
+
+  function refreshModalItems() {
+    modalItems = $$(".photo-card").filter(card => getComputedStyle(card).display !== "none");
+  }
+
+  $$(".photo-card").forEach(card => {
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.addEventListener("click", () => {
+      refreshModalItems();
+      const index = modalItems.indexOf(card);
+      if (index >= 0) openPortfolioModal(index);
+    });
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        card.click();
+      }
+    });
+  });
+
+  $("#modalClose")?.addEventListener("click", closePortfolioModal);
+  $("#modalPrev")?.addEventListener("click", () => {
+    if (modalItems.length) openPortfolioModal((modalIndex - 1 + modalItems.length) % modalItems.length);
+  });
+  $("#modalNext")?.addEventListener("click", () => {
+    if (modalItems.length) openPortfolioModal((modalIndex + 1) % modalItems.length);
+  });
+
+  document.addEventListener("keydown", event => {
+    if (modal?.classList.contains("hidden")) return;
+    if (event.key === "Escape") closePortfolioModal();
+    if (event.key === "ArrowLeft") $("#modalPrev")?.click();
+    if (event.key === "ArrowRight") $("#modalNext")?.click();
+  });
+
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closePortfolioModal();
+  });
+
+  // -----------------------------
+  // Mobile navigation
+  // -----------------------------
+  const mobileToggle = $("#mobileMenuToggle");
+  const mobileMenu = $("#mobileMenu");
+
+  function closeMobileMenu() {
+    if (!mobileToggle || !mobileMenu) return;
+    mobileToggle.setAttribute("aria-expanded", "false");
+    mobileMenu.setAttribute("aria-hidden", "true");
+    mobileMenu.classList.remove("open");
+  }
+
+  mobileToggle?.addEventListener("click", () => {
+    const open = mobileToggle.getAttribute("aria-expanded") === "true";
+    mobileToggle.setAttribute("aria-expanded", String(!open));
+    mobileMenu?.setAttribute("aria-hidden", String(open));
+    mobileMenu?.classList.toggle("open", !open);
+  });
+
+  mobileMenu?.querySelectorAll("a").forEach(link => link.addEventListener("click", closeMobileMenu));
+
+  renderSavedPortfolio();
+  renderLocations();
 
   $("#year").textContent = new Date().getFullYear();
 })();
