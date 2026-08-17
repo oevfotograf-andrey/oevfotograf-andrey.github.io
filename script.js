@@ -800,7 +800,11 @@ console.info("Fotografie Stuttgart · EXIF Lab · Photo Record v10 geladen");
     if (!target) return;
     target.innerHTML = rows
       .filter(([, value]) => value !== undefined && value !== null && String(value) !== "")
-      .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+      .map(([label, value]) => {
+        const text = String(value);
+        const missing = text === "Nicht vorhanden" || text === "—" || text === "-";
+        return `<div class="${missing ? "is-missing" : ""}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(text)}</strong></div>`;
+      })
       .join("");
   }
 
@@ -889,7 +893,9 @@ console.info("Fotografie Stuttgart · EXIF Lab · Photo Record v10 geladen");
     if (location) {
       location.classList.toggle("hidden", !hasGps);
       if (hasGps) {
-        location.textContent = item.address || `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`;
+        const address = item.address || "GPS vorhanden";
+        const coords = `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`;
+        location.innerHTML = `<span class="saved-detail-location-label">AUFNAHMEORT</span><strong>${escapeHtml(address)}</strong><small>${escapeHtml(coords)}</small>`;
       }
     }
 
