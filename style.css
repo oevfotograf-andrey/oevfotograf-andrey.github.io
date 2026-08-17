@@ -759,3 +759,14 @@ h2, h3 {
     opacity: .18;
   }
 }
+
+
+/* Fokus auf die linke Seite des Busfotos (Fahrerkabine).
+   Das Originalbild bleibt unverändert und wird nicht gestreckt. */
+.bus-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 8% center;
+  display: block;
+}
