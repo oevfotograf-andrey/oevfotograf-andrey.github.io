@@ -735,41 +735,86 @@
   // -----------------------------
   // Aufnahmeorte explorer
   // -----------------------------
-  function showLocationOnMap(item) {
-    const frame = $("#locationExplorerFrame");
-    const empty = $("#locationMapEmpty");
-    const panel = document.querySelector(".location-map-panel");
-    if (!frame || !empty || item?.lat == null || item?.lon == null) return;
+  let locationLeafletPromise = null;
+  let locationMapInstance = null;
+  let locationMapMarker = null;
+
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (locationLeafletPromise) return locationLeafletPromise;
+
+    locationLeafletPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-leaflet]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(window.L), {once:true});
+        existing.addEventListener('error', reject, {once:true});
+        return;
+      }
+
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      css.dataset.leaflet = 'true';
+      document.head.appendChild(css);
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.dataset.leaflet = 'true';
+      script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet wurde nicht geladen.'));
+      script.onerror = () => reject(new Error('Leaflet konnte nicht geladen werden.'));
+      document.head.appendChild(script);
+    });
+
+    return locationLeafletPromise;
+  }
+
+  async function showLocationOnMap(item) {
+    const mapEl = $('#locationLeafletMap');
+    const empty = $('#locationMapEmpty');
+    const fallback = $('#locationMapFallback');
+    const panel = document.querySelector('.location-map-panel');
+    if (!mapEl || !empty || item?.lat == null || item?.lon == null) return;
 
     const lat = Number(item.lat);
     const lon = Number(item.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
 
-    const delta = 0.006;
-    const bbox = [
-      lon - delta, lat - delta,
-      lon + delta, lat + delta
-    ].join(",");
+    const directMapUrl = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
+    if (fallback) fallback.href = directMapUrl;
 
-    // Reveal the iframe before assigning its URL. Keeping the iframe hidden while
-    // using loading=lazy can prevent some browsers from starting the embed.
-    frame.classList.remove("hidden");
-    empty.classList.add("hidden");
-    frame.removeAttribute("loading");
+    empty.classList.add('hidden');
+    mapEl.classList.remove('hidden');
+    fallback?.classList.remove('hidden');
+    panel?.scrollIntoView({behavior:'smooth', block:'center'});
 
-    const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`;
-    frame.src = mapUrl;
+    try {
+      const L = await loadLeaflet();
 
-    // Keep a direct map fallback available if an embedded map is blocked by a
-    // browser extension, privacy setting, or the map provider.
-    frame.onload = () => {
-      frame.dataset.loaded = "true";
-    };
-    frame.onerror = () => {
-      frame.dataset.loaded = "false";
-    };
+      if (!locationMapInstance) {
+        locationMapInstance = L.map(mapEl, {
+          zoomControl: true,
+          attributionControl: true,
+          scrollWheelZoom: true
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap-Mitwirkende'
+        }).addTo(locationMapInstance);
+      }
 
-    panel?.scrollIntoView({behavior:"smooth", block:"center"});
+      locationMapInstance.setView([lat, lon], 17, {animate:true});
+      if (locationMapMarker) locationMapMarker.remove();
+      locationMapMarker = L.marker([lat, lon]).addTo(locationMapInstance);
+      locationMapMarker.bindPopup(`<strong>${escapeHtml(item.name || 'Aufnahme')}</strong><br>${escapeHtml(item.address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`)}`).openPopup();
+
+      // The map container becomes visible after the initial layout, so Leaflet
+      // needs an explicit size recalculation.
+      setTimeout(() => locationMapInstance?.invalidateSize(), 80);
+    } catch (error) {
+      console.error(error);
+      // The direct OpenStreetMap link remains visible if Leaflet/CDN is blocked.
+    }
   }
 
   async function renderLocations() {

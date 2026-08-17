@@ -1005,11 +1005,25 @@ h2, h3 {
   background:var(--bg-soft);
   position:relative;
 }
-.location-map-frame {
+.location-leaflet-map {
   display:block;
   width:100%;
   height:520px;
-  border:0;
+  min-height:520px;
+  background:#181818;
+}
+.location-map-fallback {
+  position:absolute;
+  left:24px;
+  bottom:24px;
+  z-index:1000;
+  padding:12px 16px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:rgba(18,18,18,.94);
+  color:var(--text);
+  text-decoration:none;
+  font-weight:700;
 }
 .map-empty {
   height:100%;
@@ -1217,7 +1231,7 @@ body.modal-open { overflow:hidden; }
   .location-list-panel { border-right:0; border-bottom:1px solid var(--line); }
   .location-list { max-height:340px; }
   .location-map-panel,
-  .location-map-frame,
+  .location-leaflet-map,
   .map-empty { min-height:420px; height:420px; }
   .modal-content {
     display:flex;
@@ -1328,7 +1342,7 @@ body.modal-open { overflow:hidden; }
   .brand { order:0; flex:1; }
   .location-item { grid-template-columns:30px 1fr 18px; padding-inline:14px; }
   .location-map-panel,
-  .location-map-frame,
+  .location-leaflet-map,
   .map-empty { min-height:340px; height:340px; }
   .modal-info h2 { font-size:26px; }
   .modal-info > p:not(.eyebrow) { font-size:13px; }
