@@ -1,3 +1,4 @@
+console.info("Fotografie Stuttgart · EXIF Lab · Details v8 geladen");
 (() => {
   "use strict";
 
@@ -725,7 +726,7 @@
         <span>${escapeHtml(item.camera)}</span>
         <small>${escapeHtml(item.date)}${item.address ? " · " + escapeHtml(item.address) : ""}</small>
         <div class="saved-card-actions">
-          <button type="button" class="saved-open saved-details" data-detail-id="${escapeHtml(item.id)}">Details →</button>
+          <button type="button" class="saved-open saved-details" data-detail-id="${escapeHtml(item.id)}">Eigenschaften →</button>
           ${item.lat !== null && item.lon !== null ? `<button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Auf Karte zeigen →</button>` : ""}
         </div>
       `;
