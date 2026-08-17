@@ -1743,3 +1743,10 @@ body.modal-open { overflow:hidden; }
 .heading-letter-spaced {
   letter-spacing: 0.012em;
 }
+
+
+/* EXIF Lab – compact file facts */
+.metadata-grid strong { line-height:1.35; }
+@media (max-width: 600px) {
+  .metadata-grid strong { font-size:13px; }
+}

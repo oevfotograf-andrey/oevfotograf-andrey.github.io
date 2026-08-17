@@ -90,6 +90,14 @@
     0xA411: "SceneType",
     0xA412: "CFAPattern",
     0xA500: "Gamma",
+    0x0100: "ImageWidth",
+    0x0101: "ImageHeight",
+    0x011A: "XResolution",
+    0x011B: "YResolution",
+    0x0128: "ResolutionUnit",
+    0x0132: "ModifyDate",
+    0x0201: "JPEGInterchangeFormat",
+    0x0202: "JPEGInterchangeFormatLength",
     0x0001: "GPSLatitudeRef",
     0x0002: "GPSLatitude",
     0x0003: "GPSLongitudeRef",
@@ -199,8 +207,7 @@
     return out;
   }
 
-  function findExif(bytes) {
-    // JPEG marker scan
+  function findJpegExif(bytes) {
     if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
 
     let offset = 2;
@@ -209,7 +216,7 @@
       const marker = bytes[offset + 1];
       offset += 2;
 
-      if (marker === 0xDA || marker === 0xD9) break; // SOS / EOI
+      if (marker === 0xDA || marker === 0xD9) break;
       if (offset + 2 > bytes.length) break;
 
       const length = (bytes[offset] << 8) | bytes[offset + 1];
@@ -229,6 +236,42 @@
     return null;
   }
 
+  function findPngExif(bytes) {
+    const signature = [137,80,78,71,13,10,26,10];
+    if (bytes.length < 33 || !signature.every((v, i) => bytes[i] === v)) return null;
+
+    let offset = 8;
+    while (offset + 12 <= bytes.length) {
+      const length = ((bytes[offset] << 24) >>> 0) + (bytes[offset+1] << 16) + (bytes[offset+2] << 8) + bytes[offset+3];
+      const type = String.fromCharCode(bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]);
+      const dataStart = offset + 8;
+      const dataEnd = dataStart + length;
+      if (dataEnd + 4 > bytes.length) break;
+      if (type === "eXIf") return bytes.slice(dataStart, dataEnd);
+      if (type === "IEND") break;
+      offset = dataEnd + 4;
+    }
+    return null;
+  }
+
+  function findTiffExif(bytes) {
+    if (bytes.length < 8) return null;
+    const little = bytes[0] === 0x49 && bytes[1] === 0x49;
+    const big = bytes[0] === 0x4D && bytes[1] === 0x4D;
+    if (!little && !big) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    try {
+      if (readU16(view, 2, little) !== 42) return null;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function findExif(bytes) {
+    return findJpegExif(bytes) || findPngExif(bytes) || findTiffExif(bytes);
+  }
+
   function parseExif(buffer) {
     const bytes = new Uint8Array(buffer);
     const exif = findExif(bytes);
@@ -240,7 +283,6 @@
     const endian = String.fromCharCode(view.getUint8(0), view.getUint8(1));
     const little = endian === "II";
     if (!little && endian !== "MM") return {};
-
     if (readU16(view, 2, little) !== 42) return {};
 
     const ifd0Offset = readU32(view, 4, little);
@@ -254,6 +296,39 @@
       Object.assign(all, parseIFD(view, 0, ifd0.GPSInfoIFDPointer, little, 1));
     }
     return all;
+  }
+
+  function parsePngDimensions(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const signature = [137,80,78,71,13,10,26,10];
+    if (bytes.length < 24 || !signature.every((v, i) => bytes[i] === v)) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return {
+      width: view.getUint32(16, false),
+      height: view.getUint32(20, false)
+    };
+  }
+
+  function parseJpegDimensions(buffer) {
+    const bytes = new Uint8Array(buffer);
+    if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
+    let offset = 2;
+    const sof = new Set([0xC0,0xC1,0xC2,0xC3,0xC5,0xC6,0xC7,0xC9,0xCA,0xCB,0xCD,0xCE,0xCF]);
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xFF) { offset++; continue; }
+      while (offset < bytes.length && bytes[offset] === 0xFF) offset++;
+      const marker = bytes[offset++];
+      if (marker === 0xD8 || marker === 0xD9) continue;
+      if (marker === 0xDA) break;
+      if (offset + 2 > bytes.length) break;
+      const length = (bytes[offset] << 8) | bytes[offset+1];
+      if (length < 2 || offset + length > bytes.length) break;
+      if (sof.has(marker) && length >= 7) {
+        return {height: (bytes[offset+3] << 8) | bytes[offset+4], width: (bytes[offset+5] << 8) | bytes[offset+6]};
+      }
+      offset += length;
+    }
+    return null;
   }
 
   function formatNumber(value, digits = 2) {
@@ -324,6 +399,26 @@
     return dirs[Math.round((((degrees % 360) + 360) % 360) / 45) % 8];
   }
 
+  function orientationName(value) {
+    return ({
+      1: "Normal", 2: "Gespiegelt horizontal", 3: "180° gedreht", 4: "Gespiegelt vertikal",
+      5: "Gespiegelt + 90°", 6: "90° im Uhrzeigersinn", 7: "Gespiegelt + 270°", 8: "270° im Uhrzeigersinn"
+    })[Number(value)] || "Nicht vorhanden";
+  }
+
+  function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, 1)} KB`;
+    return `${formatNumber(bytes / (1024 * 1024), 2)} MB`;
+  }
+
+  function fileFormat(file) {
+    const name = file?.name || "";
+    const ext = name.includes(".") ? name.split(".").pop().toUpperCase() : "DATEI";
+    return ext === "JPG" ? "JPEG" : ext;
+  }
+
   function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value || "—";
@@ -389,8 +484,14 @@
       setText("exposureComp", `Belichtungskorrektur ${formatEV(Number(exif.ExposureCompensation))}`);
       setText("author", exif.Artist || exif.CameraOwnerName || "Nicht vorhanden");
       setText("copyright", exif.Copyright || "Nicht vorhanden");
+      const fallbackDimensions = file.type === "image/png" ? parsePngDimensions(buffer) : parseJpegDimensions(buffer);
+      const width = Number(exif.PixelXDimension || exif.ImageWidth || fallbackDimensions?.width);
+      const height = Number(exif.PixelYDimension || exif.ImageHeight || fallbackDimensions?.height);
       setText("dateTaken", exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden");
-      setText("dimensions", exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden");
+      setText("dimensions", Number.isFinite(width) && Number.isFinite(height) ? `${width} × ${height} px` : "Nicht vorhanden");
+      setText("fileFormat", fileFormat(file));
+      setText("fileSize", formatFileSize(file.size));
+      setText("orientation", orientationName(exif.Orientation));
       setText("metering", meteringName(exif.MeteringMode));
       setText("whiteBalance", whiteBalanceName(exif.WhiteBalance));
       setText("flash", flashName(exif.Flash));
@@ -418,7 +519,10 @@
         aperture: apertureText,
         iso: Number.isFinite(iso) && iso > 0 ? `ISO ${iso}` : "Nicht vorhanden",
         focal: formatFocal(focal),
-        dimensions: exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden",
+        dimensions: Number.isFinite(width) && Number.isFinite(height) ? `${width} × ${height} px` : "Nicht vorhanden",
+        fileFormat: fileFormat(file),
+        fileSize: formatFileSize(file.size),
+        orientation: orientationName(exif.Orientation),
         date: exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden",
         author: exif.Artist || exif.CameraOwnerName || "Nicht vorhanden",
         copyright: exif.Copyright || "Nicht vorhanden",
@@ -456,7 +560,7 @@
     } catch (error) {
       console.error(error);
       $("#exifStatus").textContent = "Analysefehler";
-      alert("Die Datei konnte nicht analysiert werden. Bitte prüfe, ob es sich um ein gültiges JPEG handelt.");
+      alert("Die Datei konnte nicht analysiert werden. Unterstützt werden JPEG, TIFF und PNG mit lesbaren EXIF-Daten.");
     }
   }
 
