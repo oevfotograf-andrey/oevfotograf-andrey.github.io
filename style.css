@@ -1738,3 +1738,8 @@ body.modal-open { overflow:hidden; }
     min-height: 310px;
   }
 }
+
+/* Slightly more breathing room in the four main section headings. */
+.heading-letter-spaced {
+  letter-spacing: 0.012em;
+}
