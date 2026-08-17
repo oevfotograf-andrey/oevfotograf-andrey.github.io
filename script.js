@@ -803,14 +803,40 @@
     const lat = Number(item.lat);
     const lon = Number(item.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) {
+      console.warn("Ungültige GPS-Daten für Aufnahme:", item);
       return false;
     }
 
-    renderOsmTileMap(canvas, lat, lon, 16);
+    // Make the map state visible first. This is intentional: if an external
+    // map resource is slow or unavailable, the user still gets the map panel
+    // and the OpenStreetMap link instead of being left on the empty state.
+    empty.classList.add("hidden");
+    content.classList.remove("hidden");
+
     const directMapUrl =
       `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}` +
       `&mlon=${encodeURIComponent(lon)}` +
       `#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
+
+    const delta = 0.004;
+    const bbox = [
+      lon - delta, lat - delta,
+      lon + delta, lat + delta
+    ].join("%2C");
+    const embedUrl =
+      `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}` +
+      `&layer=mapnik&marker=${encodeURIComponent(lat)}%2C${encodeURIComponent(lon)}`;
+
+    // Use OSM's own embeddable map instead of manually loading map tiles.
+    // This is more reliable on GitHub Pages and does not require a JS map CDN.
+    canvas.replaceChildren();
+    const frame = document.createElement("iframe");
+    frame.className = "osm-map-frame";
+    frame.title = `OpenStreetMap-Aufnahmeort ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    frame.loading = "eager";
+    frame.referrerPolicy = "strict-origin-when-cross-origin";
+    frame.src = embedUrl;
+    canvas.appendChild(frame);
 
     if (fallback) {
       fallback.href = directMapUrl;
@@ -825,9 +851,6 @@
         ? item.address
         : `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
     }
-
-    empty.classList.add("hidden");
-    content.classList.remove("hidden");
 
     document.querySelectorAll(".location-item").forEach(button => {
       button.classList.toggle("is-selected", button.dataset.locationId === item.id);
