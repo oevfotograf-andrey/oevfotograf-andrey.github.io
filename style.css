@@ -859,6 +859,15 @@ h2, h3 {
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:14px;
 }
+.saved-card-image {
+  width:100%;
+  aspect-ratio:16 / 10;
+  display:block;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:var(--bg-soft);
+}
 .saved-card {
   min-width:0;
   display:flex;
@@ -1739,14 +1748,8 @@ body.modal-open { overflow:hidden; }
   }
 }
 
-/* Slightly more breathing room in the four main section headings. */
-.heading-letter-spaced {
-  letter-spacing: 0.012em;
-}
-
-
-/* EXIF Lab – compact file facts */
-.metadata-grid strong { line-height:1.35; }
-@media (max-width: 600px) {
-  .metadata-grid strong { font-size:13px; }
-}
+/* Local EXIF archive clarity */
+.saved-heading-actions { display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:flex-end; }
+.local-save-hint { color:var(--muted); font-size:11px; letter-spacing:.04em; }
+button:disabled { opacity:.45; cursor:not-allowed; }
+@media (max-width:700px) { .saved-heading-actions { justify-content:flex-start; } }

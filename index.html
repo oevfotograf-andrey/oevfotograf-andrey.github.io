@@ -83,7 +83,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">01 / PORTFOLIO</p>
-          <h2 class="heading-letter-spaced">ÖPNV in Bildern.</h2>
+          <h2>ÖPNV in Bildern.</h2>
         </div>
         <p>Fotografie als Sammlung von Fahrzeugen, Haltestellen, Netzen und urbanen Momenten.</p>
       </div>
@@ -146,7 +146,7 @@
             <p class="eyebrow">DEINE ANALYSEN</p>
             <h3>Zuletzt analysierte Aufnahmen.</h3>
           </div>
-          <button id="clearSavedPhotos" class="text-button" type="button">Lokales Archiv leeren</button>
+          <div class="saved-heading-actions"><span class="local-save-hint">Nur auf diesem Gerät gespeichert</span><button id="clearSavedPhotos" class="text-button" type="button">Lokales Archiv leeren</button></div>
         </div>
         <div id="savedPortfolioGrid" class="saved-grid"></div>
       </div>
@@ -156,9 +156,9 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">02 / EXIF LAB</p>
-          <h2 class="heading-letter-spaced">Was steckt im Bild?</h2>
+          <h2>Was steckt im Bild?</h2>
         </div>
-        <p>Lade ein Foto hoch. EXIF-, GPS- und Aufnahmeinformationen werden direkt in deinem Browser ausgelesen. JPEG/TIFF/PNG werden ohne Upload analysiert.</p>
+        <p>Lade ein Foto hoch. EXIF-, GPS- und Aufnahmeinformationen werden direkt in deinem Browser ausgelesen. JPEG/TIFF werden ohne Upload analysiert.</p>
       </div>
 
       <div id="dropzone" class="dropzone" tabindex="0">
@@ -166,7 +166,7 @@
         <div class="upload-symbol">↥</div>
         <h3>Foto hierher ziehen</h3>
         <p>oder <label for="photoInput">Datei auswählen</label></p>
-        <small>JPEG/TIFF/PNG mit eingebetteten EXIF-Daten liefern die umfangreichsten Ergebnisse. Ohne EXIF können Kamera, GPS oder Copyright nicht ausgelesen werden.</small>
+        <small>JPEG/TIFF mit eingebetteten EXIF-Daten liefern die umfangreichsten Ergebnisse. Ohne EXIF können Kamera, GPS oder Copyright nicht ausgelesen werden.</small>
       </div>
 
       <div id="exifResult" class="exif-result hidden">
@@ -198,9 +198,6 @@
             <div><span>ISO</span><strong id="iso">—</strong></div>
             <div><span>Brennweite</span><strong id="focal">—</strong></div>
             <div><span>Bildgröße</span><strong id="dimensions">—</strong></div>
-            <div><span>Dateiformat</span><strong id="fileFormat">—</strong></div>
-            <div><span>Dateigröße</span><strong id="fileSize">—</strong></div>
-            <div><span>Ausrichtung</span><strong id="orientation">—</strong></div>
             <div><span>Aufnahmedatum</span><strong id="dateTaken">—</strong></div>
             <div><span>Autor</span><strong id="author">—</strong></div>
             <div><span>Urheberrecht</span><strong id="copyright">—</strong></div>
@@ -225,7 +222,7 @@
               <button id="saveExifButton" class="button ghost" type="button">Aufnahme merken</button>
             </div>
           </div>
-          <p class="privacy-note">Die Datei wird nicht auf den Server hochgeladen. Die EXIF-Auswertung läuft lokal in deinem Browser. Für die Straßenbezeichnung wird nur die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
+          <p class="privacy-note">Die Datei wird nicht auf den Server hochgeladen. Die EXIF-Auswertung läuft lokal in deinem Browser. „Aufnahme merken“ speichert die Analyse nur lokal in diesem Browser – ohne Konto und ohne Synchronisierung zwischen Geräten. Für die Straßenbezeichnung wird nur die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
         </div>
       </div>
     </section>
@@ -234,7 +231,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">03 / AUFNAHMEORTE</p>
-          <h2 class="heading-letter-spaced">Wo ist dieser Moment passiert?</h2>
+          <h2>Wo ist dieser Moment passiert?</h2>
         </div>
         <p>Gespeicherte EXIF-Analysen mit GPS werden hier als persönliche Ortschronik sichtbar. Ein Klick auf einen Eintrag öffnet die Position auf der Karte.</p>
       </div>
@@ -277,7 +274,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">04 / BLOG</p>
-          <h2 class="heading-letter-spaced">Notizen vom Bahnsteig.</h2>
+          <h2>Notizen vom Bahnsteig.</h2>
         </div>
         <p>Persönliche Geschichten, Fahrzeugporträts, Fototipps und Beobachtungen aus dem ÖPNV-Alltag.</p>
       </div>

@@ -90,14 +90,6 @@
     0xA411: "SceneType",
     0xA412: "CFAPattern",
     0xA500: "Gamma",
-    0x0100: "ImageWidth",
-    0x0101: "ImageHeight",
-    0x011A: "XResolution",
-    0x011B: "YResolution",
-    0x0128: "ResolutionUnit",
-    0x0132: "ModifyDate",
-    0x0201: "JPEGInterchangeFormat",
-    0x0202: "JPEGInterchangeFormatLength",
     0x0001: "GPSLatitudeRef",
     0x0002: "GPSLatitude",
     0x0003: "GPSLongitudeRef",
@@ -207,7 +199,8 @@
     return out;
   }
 
-  function findJpegExif(bytes) {
+  function findExif(bytes) {
+    // JPEG marker scan
     if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
 
     let offset = 2;
@@ -216,7 +209,7 @@
       const marker = bytes[offset + 1];
       offset += 2;
 
-      if (marker === 0xDA || marker === 0xD9) break;
+      if (marker === 0xDA || marker === 0xD9) break; // SOS / EOI
       if (offset + 2 > bytes.length) break;
 
       const length = (bytes[offset] << 8) | bytes[offset + 1];
@@ -236,42 +229,6 @@
     return null;
   }
 
-  function findPngExif(bytes) {
-    const signature = [137,80,78,71,13,10,26,10];
-    if (bytes.length < 33 || !signature.every((v, i) => bytes[i] === v)) return null;
-
-    let offset = 8;
-    while (offset + 12 <= bytes.length) {
-      const length = ((bytes[offset] << 24) >>> 0) + (bytes[offset+1] << 16) + (bytes[offset+2] << 8) + bytes[offset+3];
-      const type = String.fromCharCode(bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]);
-      const dataStart = offset + 8;
-      const dataEnd = dataStart + length;
-      if (dataEnd + 4 > bytes.length) break;
-      if (type === "eXIf") return bytes.slice(dataStart, dataEnd);
-      if (type === "IEND") break;
-      offset = dataEnd + 4;
-    }
-    return null;
-  }
-
-  function findTiffExif(bytes) {
-    if (bytes.length < 8) return null;
-    const little = bytes[0] === 0x49 && bytes[1] === 0x49;
-    const big = bytes[0] === 0x4D && bytes[1] === 0x4D;
-    if (!little && !big) return null;
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    try {
-      if (readU16(view, 2, little) !== 42) return null;
-      return bytes;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function findExif(bytes) {
-    return findJpegExif(bytes) || findPngExif(bytes) || findTiffExif(bytes);
-  }
-
   function parseExif(buffer) {
     const bytes = new Uint8Array(buffer);
     const exif = findExif(bytes);
@@ -283,6 +240,7 @@
     const endian = String.fromCharCode(view.getUint8(0), view.getUint8(1));
     const little = endian === "II";
     if (!little && endian !== "MM") return {};
+
     if (readU16(view, 2, little) !== 42) return {};
 
     const ifd0Offset = readU32(view, 4, little);
@@ -296,39 +254,6 @@
       Object.assign(all, parseIFD(view, 0, ifd0.GPSInfoIFDPointer, little, 1));
     }
     return all;
-  }
-
-  function parsePngDimensions(buffer) {
-    const bytes = new Uint8Array(buffer);
-    const signature = [137,80,78,71,13,10,26,10];
-    if (bytes.length < 24 || !signature.every((v, i) => bytes[i] === v)) return null;
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return {
-      width: view.getUint32(16, false),
-      height: view.getUint32(20, false)
-    };
-  }
-
-  function parseJpegDimensions(buffer) {
-    const bytes = new Uint8Array(buffer);
-    if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
-    let offset = 2;
-    const sof = new Set([0xC0,0xC1,0xC2,0xC3,0xC5,0xC6,0xC7,0xC9,0xCA,0xCB,0xCD,0xCE,0xCF]);
-    while (offset + 9 < bytes.length) {
-      if (bytes[offset] !== 0xFF) { offset++; continue; }
-      while (offset < bytes.length && bytes[offset] === 0xFF) offset++;
-      const marker = bytes[offset++];
-      if (marker === 0xD8 || marker === 0xD9) continue;
-      if (marker === 0xDA) break;
-      if (offset + 2 > bytes.length) break;
-      const length = (bytes[offset] << 8) | bytes[offset+1];
-      if (length < 2 || offset + length > bytes.length) break;
-      if (sof.has(marker) && length >= 7) {
-        return {height: (bytes[offset+3] << 8) | bytes[offset+4], width: (bytes[offset+5] << 8) | bytes[offset+6]};
-      }
-      offset += length;
-    }
-    return null;
   }
 
   function formatNumber(value, digits = 2) {
@@ -399,26 +324,6 @@
     return dirs[Math.round((((degrees % 360) + 360) % 360) / 45) % 8];
   }
 
-  function orientationName(value) {
-    return ({
-      1: "Normal", 2: "Gespiegelt horizontal", 3: "180° gedreht", 4: "Gespiegelt vertikal",
-      5: "Gespiegelt + 90°", 6: "90° im Uhrzeigersinn", 7: "Gespiegelt + 270°", 8: "270° im Uhrzeigersinn"
-    })[Number(value)] || "Nicht vorhanden";
-  }
-
-  function formatFileSize(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return "—";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, 1)} KB`;
-    return `${formatNumber(bytes / (1024 * 1024), 2)} MB`;
-  }
-
-  function fileFormat(file) {
-    const name = file?.name || "";
-    const ext = name.includes(".") ? name.split(".").pop().toUpperCase() : "DATEI";
-    return ext === "JPG" ? "JPEG" : ext;
-  }
-
   function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value || "—";
@@ -484,14 +389,8 @@
       setText("exposureComp", `Belichtungskorrektur ${formatEV(Number(exif.ExposureCompensation))}`);
       setText("author", exif.Artist || exif.CameraOwnerName || "Nicht vorhanden");
       setText("copyright", exif.Copyright || "Nicht vorhanden");
-      const fallbackDimensions = file.type === "image/png" ? parsePngDimensions(buffer) : parseJpegDimensions(buffer);
-      const width = Number(exif.PixelXDimension || exif.ImageWidth || fallbackDimensions?.width);
-      const height = Number(exif.PixelYDimension || exif.ImageHeight || fallbackDimensions?.height);
       setText("dateTaken", exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden");
-      setText("dimensions", Number.isFinite(width) && Number.isFinite(height) ? `${width} × ${height} px` : "Nicht vorhanden");
-      setText("fileFormat", fileFormat(file));
-      setText("fileSize", formatFileSize(file.size));
-      setText("orientation", orientationName(exif.Orientation));
+      setText("dimensions", exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden");
       setText("metering", meteringName(exif.MeteringMode));
       setText("whiteBalance", whiteBalanceName(exif.WhiteBalance));
       setText("flash", flashName(exif.Flash));
@@ -510,6 +409,8 @@
 
       currentGps = (lat !== null && lon !== null) ? {lat, lon, bearing} : null;
 
+      if (saveExifButton) saveExifButton.disabled = false;
+
       currentAnalysis = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
         name: file.name,
@@ -519,10 +420,7 @@
         aperture: apertureText,
         iso: Number.isFinite(iso) && iso > 0 ? `ISO ${iso}` : "Nicht vorhanden",
         focal: formatFocal(focal),
-        dimensions: Number.isFinite(width) && Number.isFinite(height) ? `${width} × ${height} px` : "Nicht vorhanden",
-        fileFormat: fileFormat(file),
-        fileSize: formatFileSize(file.size),
-        orientation: orientationName(exif.Orientation),
+        dimensions: exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden",
         date: exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden",
         author: exif.Artist || exif.CameraOwnerName || "Nicht vorhanden",
         copyright: exif.Copyright || "Nicht vorhanden",
@@ -535,7 +433,8 @@
         bearing: Number.isFinite(bearing) ? bearing : null,
         lat, lon,
         address: "",
-        hasExif: Object.keys(exif).length > 0
+        hasExif: Object.keys(exif).length > 0,
+        imageBlob: file
       };
 
       if (currentGps) {
@@ -558,11 +457,15 @@
         $("#exifStatus").textContent = Object.keys(exif).length ? "EXIF gefunden · GPS fehlt" : "Keine EXIF-Daten";
       }
     } catch (error) {
+      if (saveExifButton) saveExifButton.disabled = true;
       console.error(error);
       $("#exifStatus").textContent = "Analysefehler";
-      alert("Die Datei konnte nicht analysiert werden. Unterstützt werden JPEG, TIFF und PNG mit lesbaren EXIF-Daten.");
+      alert("Die Datei konnte nicht analysiert werden. Bitte prüfe, ob es sich um ein gültiges JPEG handelt.");
     }
   }
+
+  const saveExifButton = $("#saveExifButton");
+  if (saveExifButton) saveExifButton.disabled = true;
 
   input.addEventListener("change", (event) => analyzeFile(event.target.files[0]));
 
@@ -612,11 +515,36 @@
 
 
   // -----------------------------
-  // Local photo archive
+  // Local photo archive (IndexedDB)
   // -----------------------------
   const STORAGE_KEY = "fotografie-stuttgart-analyses-v2";
+  const DB_NAME = "fotografie-stuttgart-local";
+  const DB_VERSION = 1;
+  const STORE_NAME = "analyses";
+  let archiveDbPromise = null;
+  let savedObjectUrls = [];
 
-  function getSavedAnalyses() {
+  function openArchiveDb() {
+    if (archiveDbPromise) return archiveDbPromise;
+    archiveDbPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB wird von diesem Browser nicht unterstützt."));
+        return;
+      }
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, {keyPath: "id"});
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Archiv konnte nicht geöffnet werden."));
+    });
+    return archiveDbPromise;
+  }
+
+  function getLegacyAnalyses() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       return Array.isArray(parsed) ? parsed : [];
@@ -625,8 +553,84 @@
     }
   }
 
-  function saveAnalyses(items) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 30)));
+  async function getSavedAnalyses() {
+    try {
+      const db = await openArchiveDb();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const request = tx.objectStore(STORE_NAME).getAll();
+        request.onsuccess = () => {
+          const items = Array.isArray(request.result) ? request.result : [];
+          items.sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+          resolve(items);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (_) {
+      return getLegacyAnalyses();
+    }
+  }
+
+  async function putSavedAnalysis(item) {
+    const db = await openArchiveDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(item);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Speichern abgebrochen."));
+    });
+  }
+
+  async function deleteSavedAnalysis(id) {
+    try {
+      const db = await openArchiveDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (_) {
+      const items = getLegacyAnalyses().filter(item => item.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+  }
+
+  async function clearSavedAnalyses() {
+    try {
+      const db = await openArchiveDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).clear();
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (_) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
+  async function migrateLegacyArchive() {
+    const legacy = getLegacyAnalyses();
+    if (!legacy.length) return;
+    try {
+      const db = await openArchiveDb();
+      const existing = await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const request = tx.objectStore(STORE_NAME).count();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      if (existing === 0) {
+        for (const item of legacy.slice(0, 30)) {
+          await putSavedAnalysis({...item, savedAt: item.savedAt || Date.now()});
+        }
+      }
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (_) {
+      // Keep the legacy archive as a fallback when IndexedDB is unavailable.
+    }
   }
 
   function escapeHtml(value) {
@@ -635,19 +639,32 @@
     }[char]));
   }
 
-  function renderSavedPortfolio() {
+  function revokeSavedObjectUrls() {
+    savedObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    savedObjectUrls = [];
+  }
+
+  async function renderSavedPortfolio() {
     const wrap = $("#savedPortfolio");
     const grid = $("#savedPortfolioGrid");
     if (!wrap || !grid) return;
 
-    const items = getSavedAnalyses();
+    const items = await getSavedAnalyses();
     wrap.classList.toggle("hidden", items.length === 0);
+    revokeSavedObjectUrls();
     grid.innerHTML = "";
 
     items.forEach(item => {
       const card = document.createElement("article");
       card.className = "saved-card";
+      let imageMarkup = "";
+      if (item.imageBlob instanceof Blob) {
+        const url = URL.createObjectURL(item.imageBlob);
+        savedObjectUrls.push(url);
+        imageMarkup = `<img class="saved-card-image" src="${url}" alt="${escapeHtml(item.name)}" loading="lazy">`;
+      }
       card.innerHTML = `
+        ${imageMarkup}
         <div class="saved-card-top">
           <span class="saved-type">${item.lat !== null && item.lon !== null ? "GPS" : "EXIF"}</span>
           <button type="button" class="saved-remove" aria-label="Eintrag löschen" data-remove-id="${escapeHtml(item.id)}">×</button>
@@ -655,22 +672,23 @@
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(item.camera)}</span>
         <small>${escapeHtml(item.date)}${item.address ? " · " + escapeHtml(item.address) : ""}</small>
-        <button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Details →</button>
+        ${item.lat !== null && item.lon !== null ? `<button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Auf Karte zeigen →</button>` : ""}
       `;
       grid.appendChild(card);
     });
 
     grid.querySelectorAll("[data-remove-id]").forEach(button => {
-      button.addEventListener("click", () => {
-        saveAnalyses(getSavedAnalyses().filter(item => item.id !== button.dataset.removeId));
-        renderSavedPortfolio();
-        renderLocations();
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        await deleteSavedAnalysis(button.dataset.removeId);
+        await renderSavedPortfolio();
+        await renderLocations();
       });
     });
 
     grid.querySelectorAll("[data-open-id]").forEach(button => {
-      button.addEventListener("click", () => {
-        const item = getSavedAnalyses().find(entry => entry.id === button.dataset.openId);
+      button.addEventListener("click", async () => {
+        const item = (await getSavedAnalyses()).find(entry => entry.id === button.dataset.openId);
         if (item && item.lat !== null && item.lon !== null) {
           showLocationOnMap(item);
           document.querySelector("#orte")?.scrollIntoView({behavior:"smooth", block:"start"});
@@ -679,24 +697,39 @@
     });
   }
 
-  $("#saveExifButton")?.addEventListener("click", () => {
+  saveExifButton?.addEventListener("click", async () => {
     if (!currentAnalysis) return;
-    const items = getSavedAnalyses().filter(item => item.name !== currentAnalysis.name || item.date !== currentAnalysis.date);
-    items.unshift(currentAnalysis);
-    saveAnalyses(items);
-    renderSavedPortfolio();
-    renderLocations();
-    $("#saveExifButton").textContent = "✓ Aufnahme gespeichert";
-    setTimeout(() => {
-      $("#saveExifButton").textContent = "Aufnahme merken";
-    }, 1800);
+    saveExifButton.disabled = true;
+    try {
+      const items = await getSavedAnalyses();
+      const duplicate = items.find(item => item.name === currentAnalysis.name && item.date === currentAnalysis.date && item.camera === currentAnalysis.camera);
+      if (!duplicate) {
+        await putSavedAnalysis({
+          ...currentAnalysis,
+          savedAt: Date.now(),
+          imageBlob: currentAnalysis.imageBlob || null
+        });
+      }
+      await renderSavedPortfolio();
+      await renderLocations();
+      saveExifButton.textContent = duplicate ? "✓ Bereits gespeichert" : "✓ Aufnahme gespeichert";
+      setTimeout(() => {
+        saveExifButton.textContent = "Aufnahme merken";
+      }, 1800);
+    } catch (error) {
+      console.error(error);
+      alert("Die Aufnahme konnte lokal nicht gespeichert werden.");
+    } finally {
+      saveExifButton.disabled = false;
+    }
   });
 
-  $("#clearSavedPhotos")?.addEventListener("click", () => {
-    if (!getSavedAnalyses().length) return;
-    localStorage.removeItem(STORAGE_KEY);
-    renderSavedPortfolio();
-    renderLocations();
+  $("#clearSavedPhotos")?.addEventListener("click", async () => {
+    if (!(await getSavedAnalyses()).length) return;
+    if (!confirm("Das lokale Archiv wirklich vollständig löschen?")) return;
+    await clearSavedAnalyses();
+    await renderSavedPortfolio();
+    await renderLocations();
   });
 
   // -----------------------------
@@ -718,12 +751,12 @@
     empty.classList.add("hidden");
   }
 
-  function renderLocations() {
+  async function renderLocations() {
     const list = $("#locationList");
     const count = $("#locationCount");
     if (!list || !count) return;
 
-    const items = getSavedAnalyses().filter(item => Number.isFinite(item.lat) && Number.isFinite(item.lon));
+    const items = (await getSavedAnalyses()).filter(item => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)));
     count.textContent = `${items.length} ${items.length === 1 ? "Aufnahme" : "Aufnahmen"}`;
 
     if (!items.length) {
@@ -757,9 +790,14 @@
     });
   }
 
-  $("#refreshLocations")?.addEventListener("click", () => {
-    renderSavedPortfolio();
-    renderLocations();
+  $("#refreshLocations")?.addEventListener("click", async () => {
+    await renderSavedPortfolio();
+    await renderLocations();
+  });
+
+  migrateLegacyArchive().finally(async () => {
+    await renderSavedPortfolio();
+    await renderLocations();
   });
 
   // -----------------------------
