@@ -675,6 +675,7 @@
 
     modalIndex = index;
     modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
 
     const image = item.querySelector("img");
@@ -703,6 +704,7 @@
 
   function closePortfolioModal() {
     modal?.classList.add("hidden");
+    modal?.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
   }
 
@@ -734,8 +736,17 @@
 
   // The lightbox starts closed on every page load. This also prevents
   // mobile browsers from restoring an accidentally open dialog state.
-  modal?.classList.add("hidden");
-  document.body.classList.remove("modal-open");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    // Remove any legacy Back/Zurück control that may survive from an older
+    // cached HTML version. The current lightbox uses only the × close button.
+    modal.querySelectorAll("a, button").forEach(control => {
+      const label = (control.textContent || control.getAttribute("aria-label") || "").trim().toLowerCase();
+      if (label.includes("zurück") || label.includes("zuruck")) control.remove();
+    });
+  }
 
   $("#modalClose")?.addEventListener("click", closePortfolioModal);
 
@@ -768,6 +779,7 @@
   window.addEventListener("pageshow", () => {
     if (modal) {
       modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
       document.body.classList.remove("modal-open");
     }
   });

@@ -1606,3 +1606,23 @@ body.modal-open { overflow:hidden; }
     max-width: calc(100vw - 28px) !important;
   }
 }
+
+/* FINAL FIX: the lightbox must never override the hidden utility class.
+   This rule intentionally comes last so responsive display rules cannot
+   make the modal visible during the initial page load. */
+.photo-modal.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* The lightbox uses only the close button; no Back/Zurück control belongs
+   inside the overlay. These selectors also protect against older cached
+   markup being mixed with the current stylesheet. */
+.photo-modal .top-link,
+.photo-modal .back-button,
+.photo-modal .modal-back,
+.photo-modal [data-modal-back] {
+  display: none !important;
+}
