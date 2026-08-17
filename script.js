@@ -1,4 +1,4 @@
-console.info("Fotografie Stuttgart · EXIF Lab · Details v9 geladen");
+console.info("Fotografie Stuttgart · EXIF Lab · Photo Record v10 geladen");
 (() => {
   "use strict";
 
