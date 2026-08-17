@@ -497,20 +497,20 @@
 
   mapButton.addEventListener("click", () => {
     if (!currentGps) return;
-    const url = buildMapUrl(currentGps.lat, currentGps.lon);
 
-    const existing = document.getElementById("mapFrame");
-    if (existing) existing.remove();
+    // Use the same map in "Aufnahmeorte" that saved GPS entries use.
+    // This keeps the workflow consistent and avoids creating a second
+    // temporary map inside the EXIF result.
+    const item = {
+      id: "current-analysis",
+      name: currentAnalysis?.name || $("#previewFile")?.textContent || "Aufnahme",
+      camera: currentAnalysis?.camera || "",
+      address: currentAnalysis?.address || currentAnalysis?.location || "",
+      lat: currentGps.lat,
+      lon: currentGps.lon
+    };
 
-    const frame = document.createElement("iframe");
-    frame.id = "mapFrame";
-    frame.title = "Aufnahmeort auf OpenStreetMap";
-    frame.loading = "lazy";
-    frame.style.cssText = "width:100%;height:360px;border:0;border-radius:16px;margin-top:16px;background:#ddd;";
-    frame.src = url;
-    $(".gps-box").insertAdjacentElement("afterend", frame);
-
-    frame.scrollIntoView({behavior:"smooth", block:"center"});
+    showLocationOnMap(item, {scroll: true});
   });
 
 
@@ -735,86 +735,60 @@
   // -----------------------------
   // Aufnahmeorte explorer
   // -----------------------------
-  let locationLeafletPromise = null;
-  let locationMapInstance = null;
-  let locationMapMarker = null;
+  // OpenStreetMap is embedded directly in an iframe. This avoids a dependency
+  // on a third-party JavaScript map CDN, which can be blocked on some browsers,
+  // privacy extensions or GitHub Pages deployments.
+  function showLocationOnMap(item, options = {}) {
+    const frame = $("#locationMapFrame");
+    const content = $("#locationMapContent");
+    const empty = $("#locationMapEmpty");
+    const fallback = $("#locationMapFallback");
+    const label = $("#locationMapLabel");
+    const panel = document.querySelector(".location-map-panel");
 
-  function loadLeaflet() {
-    if (window.L) return Promise.resolve(window.L);
-    if (locationLeafletPromise) return locationLeafletPromise;
-
-    locationLeafletPromise = new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-leaflet]');
-      if (existing) {
-        existing.addEventListener('load', () => resolve(window.L), {once:true});
-        existing.addEventListener('error', reject, {once:true});
-        return;
-      }
-
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      css.dataset.leaflet = 'true';
-      document.head.appendChild(css);
-
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.async = true;
-      script.dataset.leaflet = 'true';
-      script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet wurde nicht geladen.'));
-      script.onerror = () => reject(new Error('Leaflet konnte nicht geladen werden.'));
-      document.head.appendChild(script);
-    });
-
-    return locationLeafletPromise;
-  }
-
-  async function showLocationOnMap(item) {
-    const mapEl = $('#locationLeafletMap');
-    const empty = $('#locationMapEmpty');
-    const fallback = $('#locationMapFallback');
-    const panel = document.querySelector('.location-map-panel');
-    if (!mapEl || !empty || item?.lat == null || item?.lon == null) return;
+    if (!frame || !content || !empty || !item) return false;
 
     const lat = Number(item.lat);
     const lon = Number(item.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
-
-    const directMapUrl = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
-    if (fallback) fallback.href = directMapUrl;
-
-    empty.classList.add('hidden');
-    mapEl.classList.remove('hidden');
-    fallback?.classList.remove('hidden');
-    panel?.scrollIntoView({behavior:'smooth', block:'center'});
-
-    try {
-      const L = await loadLeaflet();
-
-      if (!locationMapInstance) {
-        locationMapInstance = L.map(mapEl, {
-          zoomControl: true,
-          attributionControl: true,
-          scrollWheelZoom: true
-        });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap-Mitwirkende'
-        }).addTo(locationMapInstance);
-      }
-
-      locationMapInstance.setView([lat, lon], 17, {animate:true});
-      if (locationMapMarker) locationMapMarker.remove();
-      locationMapMarker = L.marker([lat, lon]).addTo(locationMapInstance);
-      locationMapMarker.bindPopup(`<strong>${escapeHtml(item.name || 'Aufnahme')}</strong><br>${escapeHtml(item.address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`)}`).openPopup();
-
-      // The map container becomes visible after the initial layout, so Leaflet
-      // needs an explicit size recalculation.
-      setTimeout(() => locationMapInstance?.invalidateSize(), 80);
-    } catch (error) {
-      console.error(error);
-      // The direct OpenStreetMap link remains visible if Leaflet/CDN is blocked.
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) {
+      return false;
     }
+
+    const embedUrl = buildMapUrl(lat, lon);
+    const directMapUrl =
+      `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}` +
+      `&mlon=${encodeURIComponent(lon)}` +
+      `#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
+
+    frame.src = embedUrl;
+    frame.title = `Aufnahmeort: ${item.name || "GPS-Aufnahme"}`;
+
+    if (fallback) {
+      fallback.href = directMapUrl;
+      fallback.setAttribute(
+        "aria-label",
+        `OpenStreetMap mit ${lat.toFixed(5)}, ${lon.toFixed(5)} öffnen`
+      );
+    }
+
+    if (label) {
+      label.textContent = item.address
+        ? item.address
+        : `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+
+    empty.classList.add("hidden");
+    content.classList.remove("hidden");
+
+    document.querySelectorAll(".location-item").forEach(button => {
+      button.classList.toggle("is-selected", button.dataset.locationId === item.id);
+    });
+
+    if (options.scroll !== false) {
+      panel?.scrollIntoView({behavior:"smooth", block:"center"});
+    }
+
+    return true;
   }
 
   async function renderLocations() {
@@ -822,7 +796,9 @@
     const count = $("#locationCount");
     if (!list || !count) return;
 
-    const items = (await getSavedAnalyses()).filter(item => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)));
+    const items = (await getSavedAnalyses()).filter(
+      item => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon))
+    );
     count.textContent = `${items.length} ${items.length === 1 ? "Aufnahme" : "Aufnahmen"}`;
 
     if (!items.length) {
@@ -833,6 +809,9 @@
           <p>Analysiere ein JPEG mit GPS im EXIF Lab und klicke anschließend auf „Aufnahme merken“.</p>
           <a class="button ghost" href="#exif">Zum EXIF Lab</a>
         </div>`;
+
+      $("#locationMapContent")?.classList.add("hidden");
+      $("#locationMapEmpty")?.classList.remove("hidden");
       return;
     }
 
@@ -849,9 +828,10 @@
     `).join("");
 
     list.querySelectorAll("[data-location-id]").forEach(button => {
-      button.addEventListener("click", () => {
-        const item = items.find(entry => entry.id === button.dataset.locationId);
-        if (item) showLocationOnMap(item);
+      button.addEventListener("click", async () => {
+        const currentItems = await getSavedAnalyses();
+        const item = currentItems.find(entry => entry.id === button.dataset.locationId);
+        if (item) showLocationOnMap(item, {scroll: true});
       });
     });
   }

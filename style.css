@@ -673,6 +673,18 @@ h2, h3 {
   .map-preview {
     min-height: 300px;
   }
+  .location-map-content {
+    height: 420px;
+    min-height: 420px;
+  }
+  .location-map-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .location-map-bar .button {
+    width: 100%;
+    justify-content: center;
+  }
   .idea-section {
     margin: 0 20px 70px;
     padding: 32px 24px;
@@ -992,6 +1004,10 @@ h2, h3 {
 }
 .location-item:hover,
 .location-item:focus-visible { background:var(--surface-2); outline:none; }
+.location-item.is-selected {
+  background:var(--surface-2);
+  box-shadow:inset 3px 0 0 var(--accent);
+}
 .location-index { color:var(--accent); font-weight:800; font-size:11px; letter-spacing:.08em; }
 .location-item-copy { min-width:0; display:flex; flex-direction:column; gap:4px; }
 .location-item-copy strong,
@@ -1005,25 +1021,47 @@ h2, h3 {
   background:var(--bg-soft);
   position:relative;
 }
-.location-leaflet-map {
-  display:block;
-  width:100%;
+.location-map-content {
   height:520px;
   min-height:520px;
-  background:#181818;
+  display:flex;
+  flex-direction:column;
+  background:#e6e6e1;
 }
-.location-map-fallback {
-  position:absolute;
-  left:24px;
-  bottom:24px;
-  z-index:1000;
-  padding:12px 16px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  background:rgba(18,18,18,.94);
-  color:var(--text);
-  text-decoration:none;
-  font-weight:700;
+.location-map-frame {
+  display:block;
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  border:0;
+  background:#e6e6e1;
+}
+.location-map-bar {
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:14px 18px;
+  border-top:1px solid var(--line);
+  background:var(--surface);
+}
+.location-map-bar > div {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.location-map-bar .eyebrow {
+  margin:0;
+}
+.location-map-bar strong {
+  font-size:13px;
+  overflow-wrap:anywhere;
+}
+.location-map-bar .button {
+  flex:0 0 auto;
+  white-space:nowrap;
 }
 .map-empty {
   height:100%;
@@ -1342,7 +1380,7 @@ body.modal-open { overflow:hidden; }
   .brand { order:0; flex:1; }
   .location-item { grid-template-columns:30px 1fr 18px; padding-inline:14px; }
   .location-map-panel,
-  .location-leaflet-map,
+  .location-map-content,
   .map-empty { min-height:340px; height:340px; }
   .modal-info h2 { font-size:26px; }
   .modal-info > p:not(.eyebrow) { font-size:13px; }

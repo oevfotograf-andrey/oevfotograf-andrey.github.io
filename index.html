@@ -260,8 +260,22 @@
             <h3>Deine Fotopunkte.</h3>
             <p>Sobald eine gespeicherte Aufnahme GPS-Daten besitzt, erscheint hier ihre Karte.</p>
           </div>
-          <div id="locationLeafletMap" class="location-leaflet-map hidden" aria-label="Karte der gespeicherten Aufnahmeorte"></div>
-          <a id="locationMapFallback" class="location-map-fallback hidden" target="_blank" rel="noopener" href="#">Karte in OpenStreetMap öffnen →</a>
+          <div id="locationMapContent" class="location-map-content hidden">
+            <iframe
+              id="locationMapFrame"
+              class="location-map-frame"
+              title="Aufnahmeort auf OpenStreetMap"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              src="about:blank"></iframe>
+            <div class="location-map-bar">
+              <div>
+                <span class="eyebrow">AUSGEWÄHLTER ORT</span>
+                <strong id="locationMapLabel">GPS-Aufnahme</strong>
+              </div>
+              <a id="locationMapFallback" class="button ghost" target="_blank" rel="noopener" href="#">OpenStreetMap öffnen ↗</a>
+            </div>
+          </div>
         </div>
       </div>
 
