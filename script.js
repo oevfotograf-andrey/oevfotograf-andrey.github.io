@@ -1,4 +1,4 @@
-console.info("Fotografie Stuttgart · EXIF Lab · Details v8 geladen");
+console.info("Fotografie Stuttgart · EXIF Lab · Details v9 geladen");
 (() => {
   "use strict";
 
@@ -796,38 +796,103 @@ console.info("Fotografie Stuttgart · EXIF Lab · Details v8 geladen");
     return rows.filter(([,value]) => value !== undefined && value !== null && String(value) !== "");
   }
 
+  function renderDetailRows(target, rows) {
+    if (!target) return;
+    target.innerHTML = rows
+      .filter(([, value]) => value !== undefined && value !== null && String(value) !== "")
+      .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+      .join("");
+  }
+
   function openSavedDetail(item) {
     const modal = $("#savedDetailModal");
     const image = $("#savedDetailImage");
+    const fallback = $("#savedDetailImageFallback");
     const title = $("#savedDetailTitle");
+    const caption = $("#savedDetailCaption");
     const kicker = $("#savedDetailKicker");
-    const meta = $("#savedDetailMeta");
+    const type = $("#savedDetailType");
+    const capture = $("#savedDetailCapture");
+    const file = $("#savedDetailFile");
+    const gps = $("#savedDetailGps");
+    const gpsSection = $("#savedDetailGpsSection");
     const location = $("#savedDetailLocation");
     const mapLink = $("#savedDetailMapLink");
-    if (!modal || !image || !title || !meta) return;
+    if (!modal || !image || !title || !capture || !file || !gps) return;
 
     if (savedDetailObjectUrl) URL.revokeObjectURL(savedDetailObjectUrl);
     savedDetailObjectUrl = null;
-    if (item.imageBlob instanceof Blob) {
+
+    const hasImage = item.imageBlob instanceof Blob;
+    if (hasImage) {
       savedDetailObjectUrl = URL.createObjectURL(item.imageBlob);
       image.src = savedDetailObjectUrl;
       image.alt = item.name || "Gespeicherte Aufnahme";
       image.classList.remove("hidden");
+      fallback?.classList.add("hidden");
     } else {
       image.removeAttribute("src");
-      image.alt = "Keine Bilddatei im lokalen Archiv";
+      image.alt = "";
       image.classList.add("hidden");
+      fallback?.classList.remove("hidden");
     }
+
+    const hasGps = Number.isFinite(Number(item.lat)) &&
+      Number.isFinite(Number(item.lon)) &&
+      !(Number(item.lat) === 0 && Number(item.lon) === 0);
 
     title.textContent = item.name || "Gespeicherte Aufnahme";
-    kicker.textContent = item.lat !== null && item.lon !== null ? "GPS · LOKALES ARCHIV" : "EXIF · LOKALES ARCHIV";
-    meta.innerHTML = detailRows(item).map(([label,value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    if (caption) caption.textContent = item.name || "Gespeicherte Aufnahme";
+    kicker.textContent = hasGps ? "GPS · LOKALES ARCHIV" : "EXIF · LOKALES ARCHIV";
+    if (type) type.textContent = hasGps ? "GPS" : "EXIF";
 
-    const hasGps = Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)) && !(Number(item.lat) === 0 && Number(item.lon) === 0);
+    const captureRows = [
+      ["Kamera", item.camera],
+      ["Objektiv", item.lens],
+      ["Aufnahmedatum", item.date],
+      ["Verschlusszeit", item.shutter],
+      ["Blende", item.aperture],
+      ["ISO", item.iso],
+      ["Brennweite", item.focal],
+      ["Bildgröße", item.dimensions],
+      ["Messmethode", item.metering],
+      ["Weißabgleich", item.whiteBalance],
+      ["Blitz", item.flash],
+      ["Aufnahmeprogramm", item.exposureProgram],
+      ["Software", item.software]
+    ];
+    const fileRows = [
+      ["Datei", item.name],
+      ["Autor", item.author],
+      ["Urheberrecht", item.copyright],
+      ["Kamera-Seriennummer", item.cameraSerial],
+      ["Objektiv-Seriennummer", item.lensSerial]
+    ];
+    renderDetailRows(capture, captureRows);
+    renderDetailRows(file, fileRows);
+
+    if (gpsSection) gpsSection.classList.toggle("hidden", !hasGps);
+    if (hasGps) {
+      const gpsRows = [
+        ["Aufnahmeort", item.address || "GPS vorhanden"],
+        ["Koordinaten", `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`],
+        ["GPS-Höhe", item.altitude],
+        ["Richtung", Number.isFinite(Number(item.bearing))
+          ? `${directionName(Number(item.bearing))} · ${formatNumber(Number(item.bearing), 0)}°`
+          : ""]
+      ];
+      renderDetailRows(gps, gpsRows);
+    } else {
+      gps.innerHTML = "";
+    }
+
     if (location) {
       location.classList.toggle("hidden", !hasGps);
-      if (hasGps) location.textContent = item.address || `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`;
+      if (hasGps) {
+        location.textContent = item.address || `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`;
+      }
     }
+
     if (mapLink) {
       if (hasGps) {
         const lat = Number(item.lat), lon = Number(item.lon);
