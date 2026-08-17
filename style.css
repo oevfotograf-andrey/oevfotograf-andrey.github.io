@@ -1157,6 +1157,82 @@ h2, h3 {
 .modal-nav:focus-visible { background:rgba(255,255,255,.14); outline:none; }
 body.modal-open { overflow:hidden; }
 
+/* Desktop lightbox: keep the description beside the photo so it never covers the frame. */
+@media (min-width: 901px) {
+  .photo-modal {
+    padding:clamp(18px,3vw,44px);
+  }
+
+  .modal-content {
+    width:min(1760px, calc(100vw - 80px));
+    height:min(900px, calc(100vh - 80px));
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(300px, 360px);
+    align-items:stretch;
+    gap:0;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:22px;
+    background:#090909;
+    box-shadow:0 30px 100px rgba(0,0,0,.55);
+  }
+
+  .modal-image-wrap {
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    padding:0;
+    overflow:hidden;
+  }
+
+  .modal-image-wrap img {
+    width:100%;
+    height:100%;
+    max-width:none;
+    max-height:none;
+    object-fit:contain;
+    object-position:center;
+    border-radius:0;
+    box-shadow:none;
+  }
+
+  .modal-info {
+    position:relative;
+    left:auto;
+    right:auto;
+    bottom:auto;
+    z-index:3;
+    width:auto;
+    max-height:none;
+    min-width:0;
+    overflow:auto;
+    padding:clamp(24px,2.4vw,42px);
+    border:0;
+    border-left:1px solid rgba(255,255,255,.12);
+    border-radius:0;
+    background:rgba(15,15,15,.96);
+    box-shadow:none;
+  }
+
+  .modal-close {
+    top:clamp(12px,1.5vw,24px);
+    right:clamp(12px,1.5vw,24px);
+    width:44px;
+    height:44px;
+    z-index:120;
+  }
+
+  .modal-back {
+    top:clamp(12px,1.5vw,24px);
+    left:clamp(12px,1.5vw,24px);
+    z-index:120;
+  }
+
+  .modal-prev { left:clamp(10px,1.4vw,24px); }
+  .modal-next { right:clamp(10px,1.4vw,24px); }
+}
+
 .mobile-menu-toggle { display:none; }
 .mobile-menu { display:none; }
 
@@ -1168,18 +1244,44 @@ body.modal-open { overflow:hidden; }
   .location-map-panel,
   .location-map-frame,
   .map-empty { min-height:420px; height:420px; }
+  .modal-content {
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:0;
+    width:100%;
+    height:100%;
+  }
+  .modal-image-wrap {
+    flex:1 1 auto;
+    min-height:0;
+    width:100%;
+    overflow:hidden;
+  }
   .modal-image-wrap img {
-    max-width:calc(100vw - 28px);
-    max-height:calc(100vh - 28px);
+    width:100%;
+    height:100%;
+    max-width:none;
+    max-height:none;
+    object-fit:contain;
+    border-radius:0;
+    box-shadow:none;
   }
   .modal-info {
-    left:12px;
-    right:12px;
-    bottom:12px;
-    width:auto;
+    position:relative;
+    left:auto;
+    right:auto;
+    bottom:auto;
+    width:100%;
     max-height:30vh;
+    flex:0 0 auto;
+    overflow:auto;
     padding:15px 16px;
-    border-radius:13px;
+    border:0;
+    border-top:1px solid rgba(255,255,255,.12);
+    border-radius:0;
+    background:rgba(12,12,12,.98);
+    box-shadow:none;
   }
 }
 

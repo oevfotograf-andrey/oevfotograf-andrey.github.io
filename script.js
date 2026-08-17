@@ -741,6 +741,7 @@
   });
 
   $("#modalClose")?.addEventListener("click", closePortfolioModal);
+  $("#modalBack")?.addEventListener("click", closePortfolioModal);
   $("#modalPrev")?.addEventListener("click", () => {
     if (modalItems.length) openPortfolioModal((modalIndex - 1 + modalItems.length) % modalItems.length);
   });
