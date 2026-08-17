@@ -1649,3 +1649,43 @@ body.modal-open { overflow:hidden; }
     display: block !important;
   }
 }
+
+
+/* Aufnahmeorte / EXIF empty state: centered and comfortably inset on all screens */
+.location-list-panel .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 42px 34px;
+  min-height: 300px;
+}
+.location-list-panel .empty-state > span {
+  display: block;
+  margin-bottom: 8px;
+}
+.location-list-panel .empty-state strong {
+  display: block;
+  font-size: 17px;
+  line-height: 1.25;
+  margin: 0;
+}
+.location-list-panel .empty-state p {
+  max-width: 430px;
+  margin: 10px auto 18px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.location-list-panel .empty-state .button {
+  margin-inline: auto;
+}
+@media (max-width: 600px) {
+  .location-list-panel .empty-state {
+    padding: 42px 30px;
+    min-height: 310px;
+  }
+  .location-list-panel .empty-state p {
+    max-width: 100%;
+  }
+}
