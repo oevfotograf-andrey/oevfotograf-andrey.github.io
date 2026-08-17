@@ -1689,3 +1689,52 @@ body.modal-open { overflow:hidden; }
     max-width: 100%;
   }
 }
+
+
+/* EXIF / Aufnahmeorte empty-state desktop alignment fix v6
+   Keep the GPS empty state centered on desktop as well as mobile.
+   The list itself becomes a flex column so the empty state gets a
+   real content box to center within. */
+.location-list-panel .location-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+.location-list-panel .location-list .empty-state {
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 42px 56px !important;
+  min-height: 300px;
+}
+.location-list-panel .location-list .empty-state strong,
+.location-list-panel .location-list .empty-state p,
+.location-list-panel .location-list .empty-state > span {
+  text-align: center !important;
+}
+.location-list-panel .location-list .empty-state p {
+  width: min(100%, 430px);
+  margin: 10px auto 18px !important;
+}
+.location-list-panel .location-list .empty-state .button {
+  align-self: center;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+@media (max-width: 900px) {
+  .location-list-panel .location-list .empty-state {
+    padding: 42px 34px !important;
+  }
+}
+@media (max-width: 600px) {
+  .location-list-panel .location-list .empty-state {
+    padding: 42px 30px !important;
+    min-height: 310px;
+  }
+}
