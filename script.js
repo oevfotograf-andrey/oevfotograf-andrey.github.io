@@ -672,6 +672,7 @@
   function openPortfolioModal(index) {
     const item = modalItems[index];
     if (!item || !modal) return;
+
     modalIndex = index;
     modal.classList.remove("hidden");
     document.body.classList.add("modal-open");
@@ -684,6 +685,7 @@
       modalImage.src = image.currentSrc || image.src;
       modalImage.alt = image.alt || title?.textContent || "Portfolio-Foto";
       modalImage.classList.remove("modal-placeholder");
+      modalImage.style.background = "";
     } else {
       modalImage.removeAttribute("src");
       modalImage.alt = "";
@@ -694,6 +696,9 @@
     modalTitle.textContent = title?.textContent || "Aufnahme";
     modalDescription.textContent = image?.alt || "Aufnahme aus dem Fotografie-Stuttgart-Archiv.";
     modalMeta.innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join("");
+
+    // Keep the keyboard/screen-reader focus inside the lightbox.
+    $("#modalBack")?.focus({ preventScroll: true });
   }
 
   function closePortfolioModal() {
@@ -705,31 +710,18 @@
     modalItems = $$(".photo-card").filter(card => getComputedStyle(card).display !== "none");
   }
 
+  // Important: the portfolio opens only on an intentional click/tap.
+  // There is deliberately no hover/pointerenter opening anymore.
   $$(".photo-card").forEach(card => {
     card.setAttribute("tabindex", "0");
     card.setAttribute("role", "button");
 
-    // Desktop: a short hover opens the same full-screen viewer.
-    // Touch devices: tapping the card opens it instead.
-    let hoverTimer = null;
-    card.addEventListener("pointerenter", event => {
-      if (event.pointerType !== "mouse") return;
-      window.clearTimeout(hoverTimer);
-      hoverTimer = window.setTimeout(() => {
-        refreshModalItems();
-        const index = modalItems.indexOf(card);
-        if (index >= 0 && modal?.classList.contains("hidden")) openPortfolioModal(index);
-      }, 260);
-    });
-    card.addEventListener("pointerleave", () => window.clearTimeout(hoverTimer));
-
-    card.addEventListener("click", event => {
-      // The desktop hover already opened the viewer; don't restart it.
-      if (!modal?.classList.contains("hidden")) return;
+    card.addEventListener("click", () => {
       refreshModalItems();
       const index = modalItems.indexOf(card);
       if (index >= 0) openPortfolioModal(index);
     });
+
     card.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -742,11 +734,17 @@
 
   $("#modalClose")?.addEventListener("click", closePortfolioModal);
   $("#modalBack")?.addEventListener("click", closePortfolioModal);
+
   $("#modalPrev")?.addEventListener("click", () => {
-    if (modalItems.length) openPortfolioModal((modalIndex - 1 + modalItems.length) % modalItems.length);
+    if (modalItems.length) {
+      openPortfolioModal((modalIndex - 1 + modalItems.length) % modalItems.length);
+    }
   });
+
   $("#modalNext")?.addEventListener("click", () => {
-    if (modalItems.length) openPortfolioModal((modalIndex + 1) % modalItems.length);
+    if (modalItems.length) {
+      openPortfolioModal((modalIndex + 1) % modalItems.length);
+    }
   });
 
   document.addEventListener("keydown", event => {
