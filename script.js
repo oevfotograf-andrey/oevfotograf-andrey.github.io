@@ -738,17 +738,38 @@
   function showLocationOnMap(item) {
     const frame = $("#locationExplorerFrame");
     const empty = $("#locationMapEmpty");
+    const panel = document.querySelector(".location-map-panel");
     if (!frame || !empty || item?.lat == null || item?.lon == null) return;
+
+    const lat = Number(item.lat);
+    const lon = Number(item.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
     const delta = 0.006;
     const bbox = [
-      item.lon - delta, item.lat - delta,
-      item.lon + delta, item.lat + delta
-    ].join("%2C");
+      lon - delta, lat - delta,
+      lon + delta, lat + delta
+    ].join(",");
 
-    frame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${encodeURIComponent(item.lat)}%2C${encodeURIComponent(item.lon)}`;
+    // Reveal the iframe before assigning its URL. Keeping the iframe hidden while
+    // using loading=lazy can prevent some browsers from starting the embed.
     frame.classList.remove("hidden");
     empty.classList.add("hidden");
+    frame.removeAttribute("loading");
+
+    const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`;
+    frame.src = mapUrl;
+
+    // Keep a direct map fallback available if an embedded map is blocked by a
+    // browser extension, privacy setting, or the map provider.
+    frame.onload = () => {
+      frame.dataset.loaded = "true";
+    };
+    frame.onerror = () => {
+      frame.dataset.loaded = "false";
+    };
+
+    panel?.scrollIntoView({behavior:"smooth", block:"center"});
   }
 
   async function renderLocations() {
