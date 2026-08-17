@@ -132,15 +132,15 @@
           <p class="eyebrow">02 / EXIF LAB</p>
           <h2>Was steckt im Bild?</h2>
         </div>
-        <p>Lade ein JPEG-Foto hoch. Die wichtigsten EXIF-Daten werden direkt im Browser ausgelesen.</p>
+        <p>Lade ein Foto hoch. EXIF-, GPS- und Aufnahmeinformationen werden direkt in deinem Browser ausgelesen. JPEG/TIFF werden ohne Upload analysiert.</p>
       </div>
 
       <div id="dropzone" class="dropzone" tabindex="0">
-        <input id="photoInput" type="file" accept="image/jpeg,image/jpg,image/tiff">
+        <input id="photoInput" type="file" accept="image/jpeg,image/jpg,image/tiff,image/png">
         <div class="upload-symbol">↥</div>
         <h3>Foto hierher ziehen</h3>
         <p>oder <label for="photoInput">Datei auswählen</label></p>
-        <small>Für EXIF- und GPS-Auswertung sind JPEG-Dateien am zuverlässigsten.</small>
+        <small>JPEG/TIFF mit eingebetteten EXIF-Daten liefern die umfangreichsten Ergebnisse. Ohne EXIF können Kamera, GPS oder Copyright nicht ausgelesen werden.</small>
       </div>
 
       <div id="exifResult" class="exif-result hidden">
@@ -158,6 +158,12 @@
             <span id="exifStatus" class="status">Bereit</span>
           </div>
 
+          <div class="exif-highlight-grid">
+            <div class="exif-highlight"><span>EXPOSITION</span><strong id="exposureSummary">—</strong><small id="exposureComp">Belichtungskorrektur —</small></div>
+            <div class="exif-highlight"><span>AUFNAHMEORT</span><strong id="locationShort">—</strong><small id="coordinates">—</small></div>
+            <div class="exif-highlight"><span>RICHTUNG</span><strong id="direction">—</strong><small id="directionDegrees">—</small></div>
+          </div>
+
           <div class="metadata-grid">
             <div><span>Kamera</span><strong id="camera">—</strong></div>
             <div><span>Objektiv</span><strong id="lens">—</strong></div>
@@ -165,21 +171,29 @@
             <div><span>Blende</span><strong id="aperture">—</strong></div>
             <div><span>ISO</span><strong id="iso">—</strong></div>
             <div><span>Brennweite</span><strong id="focal">—</strong></div>
+            <div><span>Bildgröße</span><strong id="dimensions">—</strong></div>
+            <div><span>Aufnahmedatum</span><strong id="dateTaken">—</strong></div>
             <div><span>Autor</span><strong id="author">—</strong></div>
             <div><span>Urheberrecht</span><strong id="copyright">—</strong></div>
-            <div><span>Aufnahmedatum</span><strong id="dateTaken">—</strong></div>
-            <div><span>Ausrichtung</span><strong id="direction">—</strong></div>
+            <div><span>Messmethode</span><strong id="metering">—</strong></div>
+            <div><span>Weißabgleich</span><strong id="whiteBalance">—</strong></div>
+            <div><span>Blitz</span><strong id="flash">—</strong></div>
+            <div><span>Aufnahmeprogramm</span><strong id="exposureProgram">—</strong></div>
+            <div><span>Software</span><strong id="software">—</strong></div>
+            <div><span>Seriennummer Kamera</span><strong id="cameraSerial">—</strong></div>
+            <div><span>Seriennummer Objektiv</span><strong id="lensSerial">—</strong></div>
+            <div><span>GPS-Höhe</span><strong id="altitude">—</strong></div>
           </div>
 
           <div class="gps-box">
             <div>
               <span class="eyebrow">GPS / AUFNAHMEORT</span>
               <h3 id="locationName">Kein GPS gefunden</h3>
-              <p id="coordinates">—</p>
+              <p id="locationDetails">Die Adresse wird nach dem Auslesen der GPS-Daten ermittelt.</p>
             </div>
             <button id="mapButton" class="button primary" type="button" disabled>Auf Karte zeigen</button>
           </div>
-          <p class="privacy-note">Die Datei wird für diese Demo nicht hochgeladen. Die EXIF-Auswertung läuft lokal in deinem Browser. Für die Straßenbezeichnung wird nur die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
+          <p class="privacy-note">Die Datei wird nicht auf den Server hochgeladen. Die EXIF-Auswertung läuft lokal in deinem Browser. Für die Straßenbezeichnung wird nur die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
         </div>
       </div>
     </section>

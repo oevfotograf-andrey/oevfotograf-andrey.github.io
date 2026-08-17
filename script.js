@@ -72,6 +72,22 @@
     0xA003: "PixelYDimension",
     0xA434: "LensModel",
     0xA435: "LensSerialNumber",
+    0xA431: "BodySerialNumber",
+    0xA430: "CameraOwnerName",
+    0x9204: "ExposureCompensation",
+    0x9207: "MeteringMode",
+    0x9209: "Flash",
+    0xA402: "ExposureProgram",
+    0xA403: "ExposureMode",
+    0xA406: "SceneCaptureType",
+    0xA401: "CustomRendered",
+    0xA404: "DigitalZoomRatio",
+    0x9208: "LightSource",
+    0xA40C: "SubjectDistanceRange",
+    0xA410: "FileSource",
+    0xA411: "SceneType",
+    0xA412: "CFAPattern",
+    0xA500: "Gamma",
     0x0001: "GPSLatitudeRef",
     0x0002: "GPSLatitude",
     0x0003: "GPSLongitudeRef",
@@ -257,6 +273,40 @@
     return Number.isFinite(value) ? `f/${formatNumber(value, 1)}` : "—";
   }
 
+  function formatEV(value) {
+    return Number.isFinite(value) ? `${value > 0 ? "+" : ""}${formatNumber(value, 1)} EV` : "—";
+  }
+
+  function meteringName(value) {
+    return ({
+      0:"Unbekannt", 1:"Durchschnitt", 2:"Mittenbetont", 3:"Spot",
+      4:"Mehrfeld", 5:"Muster", 6:"Partiell", 255:"Andere"
+    })[Number(value)] || "—";
+  }
+
+  function exposureProgramName(value) {
+    return ({
+      0:"Nicht definiert", 1:"Manuell", 2:"Programmautomatik",
+      3:"Zeitautomatik", 4:"Blendenautomatik", 5:"Kreativ", 6:"Action",
+      7:"Portrait", 8:"Landschaft"
+    })[Number(value)] || "—";
+  }
+
+  function whiteBalanceName(value) {
+    return ({0:"Automatisch", 1:"Manuell"})[Number(value)] || "—";
+  }
+
+  function flashName(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return "—";
+    return (n & 1) ? "Blitz ausgelöst" : "Kein Blitz";
+  }
+
+  function formatAltitude(value, ref) {
+    if (!Number.isFinite(value)) return "—";
+    return `${formatNumber(value, 1)} m${Number(ref) === 1 ? " unter NN" : " über NN"}`;
+  }
+
   function dmsToDecimal(dms, ref) {
     if (!Array.isArray(dms) || dms.length < 3) return null;
     const deg = Number(dms[0]), min = Number(dms[1]), sec = Number(dms[2]);
@@ -303,8 +353,8 @@
 
   async function analyzeFile(file) {
     if (!file) return;
-    if (!/^image\/(jpeg|jpg|tiff)$/i.test(file.type) && !/\.(jpe?g|tiff?)$/i.test(file.name)) {
-      alert("Bitte möglichst ein JPEG-Foto auswählen. Dieses Demo liest EXIF aus JPEG-Dateien.");
+    if (!/^image\/(jpeg|jpg|tiff|png)$/i.test(file.type) && !/\.(jpe?g|tiff?|png)$/i.test(file.name)) {
+      alert("Bitte eine Bilddatei (JPEG, TIFF oder PNG) auswählen.");
       return;
     }
 
@@ -322,16 +372,35 @@
       const model = exif.Model || "";
       setText("camera", [make, model].filter(Boolean).join(" ") || "Nicht vorhanden");
       setText("lens", exif.LensModel || "Nicht vorhanden");
-      setText("shutter", formatExposure(Number(exif.ExposureTime)));
-      setText("aperture", formatAperture(Number(exif.FNumber)));
-      setText("iso", exif.ISO ? `ISO ${exif.ISO}` : "Nicht vorhanden");
-      setText("focal", formatFocal(Number(exif.FocalLength)));
-      setText("author", exif.Artist || "Nicht vorhanden");
+      const shutter = Number(exif.ExposureTime);
+      const aperture = Number(exif.FNumber);
+      const iso = Number(exif.ISO);
+      const focal = Number(exif.FocalLength);
+      const exposureText = formatExposure(shutter);
+      const apertureText = formatAperture(aperture);
+      const isoText = Number.isFinite(iso) && iso > 0 ? `ISO ${iso}` : "ISO —";
+      setText("shutter", exposureText);
+      setText("aperture", apertureText);
+      setText("iso", Number.isFinite(iso) && iso > 0 ? `ISO ${iso}` : "Nicht vorhanden");
+      setText("focal", formatFocal(focal));
+      setText("exposureSummary", [exposureText, apertureText, isoText].filter(v => v !== "—").join(" · ") || "Keine Belichtungsdaten");
+      setText("exposureComp", `Belichtungskorrektur ${formatEV(Number(exif.ExposureCompensation))}`);
+      setText("author", exif.Artist || exif.CameraOwnerName || "Nicht vorhanden");
       setText("copyright", exif.Copyright || "Nicht vorhanden");
       setText("dateTaken", exif.DateTimeOriginal || exif.CreateDate || "Nicht vorhanden");
+      setText("dimensions", exif.PixelXDimension && exif.PixelYDimension ? `${exif.PixelXDimension} × ${exif.PixelYDimension} px` : "Nicht vorhanden");
+      setText("metering", meteringName(exif.MeteringMode));
+      setText("whiteBalance", whiteBalanceName(exif.WhiteBalance));
+      setText("flash", flashName(exif.Flash));
+      setText("exposureProgram", exposureProgramName(exif.ExposureProgram));
+      setText("software", exif.Software || "Nicht vorhanden");
+      setText("cameraSerial", exif.BodySerialNumber || "Nicht vorhanden");
+      setText("lensSerial", exif.LensSerialNumber || "Nicht vorhanden");
+      setText("altitude", formatAltitude(Number(exif.GPSAltitude), exif.GPSAltitudeRef));
 
       const bearing = Number(exif.GPSImgDirection);
-      setText("direction", Number.isFinite(bearing) ? `${directionName(bearing)} (${formatNumber(bearing, 0)}°)` : "Nicht vorhanden");
+      setText("direction", Number.isFinite(bearing) ? directionName(bearing) : "Nicht vorhanden");
+      setText("directionDegrees", Number.isFinite(bearing) ? `${formatNumber(bearing, 0)}°` : "Kein Kompasswert");
 
       const lat = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
       const lon = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
@@ -340,16 +409,21 @@
 
       if (currentGps) {
         setText("coordinates", `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+        setText("locationShort", "GPS vorhanden");
         $("#locationName").textContent = "Adresse wird ermittelt…";
+        $("#locationDetails").textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         mapButton.disabled = false;
         const address = await reverseGeocode(lat, lon);
         $("#locationName").textContent = address;
+        $("#locationDetails").textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         $("#exifStatus").textContent = "EXIF + GPS gefunden";
       } else {
-        setText("coordinates", "Keine GPS-Koordinaten in der Datei");
+        setText("coordinates", "Keine GPS-Koordinaten");
+        setText("locationShort", "Kein GPS");
         $("#locationName").textContent = "Kein GPS gefunden";
+        $("#locationDetails").textContent = "Diese Datei enthält keine eingebetteten GPS-Koordinaten.";
         mapButton.disabled = true;
-        $("#exifStatus").textContent = Object.keys(exif).length ? "EXIF gefunden" : "Keine EXIF-Daten";
+        $("#exifStatus").textContent = Object.keys(exif).length ? "EXIF gefunden · GPS fehlt" : "Keine EXIF-Daten";
       }
     } catch (error) {
       console.error(error);
