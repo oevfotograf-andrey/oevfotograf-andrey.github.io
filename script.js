@@ -697,8 +697,8 @@
     modalDescription.textContent = image?.alt || "Aufnahme aus dem Fotografie-Stuttgart-Archiv.";
     modalMeta.innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join("");
 
-    // Keep the keyboard/screen-reader focus inside the lightbox.
-    $("#modalBack")?.focus({ preventScroll: true });
+    // Focus the close button so the lightbox is immediately keyboard accessible.
+    $("#modalClose")?.focus({ preventScroll: true });
   }
 
   function closePortfolioModal() {
@@ -732,8 +732,12 @@
     });
   });
 
+  // The lightbox starts closed on every page load. This also prevents
+  // mobile browsers from restoring an accidentally open dialog state.
+  modal?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+
   $("#modalClose")?.addEventListener("click", closePortfolioModal);
-  $("#modalBack")?.addEventListener("click", closePortfolioModal);
 
   $("#modalPrev")?.addEventListener("click", () => {
     if (modalItems.length) {
@@ -756,6 +760,16 @@
 
   modal?.addEventListener("click", event => {
     if (event.target === modal) closePortfolioModal();
+  });
+
+  // Some mobile browsers can restore the previous visual state from BFCache.
+  // Always start the portfolio page with the lightbox closed unless the user
+  // explicitly opens a photo.
+  window.addEventListener("pageshow", () => {
+    if (modal) {
+      modal.classList.add("hidden");
+      document.body.classList.remove("modal-open");
+    }
   });
 
   // -----------------------------
