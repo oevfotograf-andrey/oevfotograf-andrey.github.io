@@ -250,7 +250,9 @@ h1 em { font-family:var(--serif); font-weight:400; letter-spacing:-.05em; }
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: 52% 58%;
+  object-position: left center;
+  transform: scale(1.42);
+  transform-origin: left center;
   z-index: 0;
 }
 .p3 { background:linear-gradient(140deg,#191919,#282828); }
@@ -758,15 +760,4 @@ h2, h3 {
   .hero-photo {
     opacity: .18;
   }
-}
-
-
-/* Fokus auf die linke Seite des Busfotos (Fahrerkabine).
-   Das Originalbild bleibt unverändert und wird nicht gestreckt. */
-.bus-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 8% center;
-  display: block;
 }
