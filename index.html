@@ -357,13 +357,27 @@
           <a id="savedDetailMapLink" class="button primary hidden" target="_blank" rel="noopener noreferrer">OpenStreetMap öffnen ↗</a>
         </div>
 
-        <div class="saved-detail-section">
-          <p class="saved-detail-section-title">Aufnahme</p>
+        <div class="saved-detail-section saved-detail-section-primary">
+          <div class="saved-detail-section-heading">
+            <p class="saved-detail-section-title">Aufnahme</p>
+            <span class="saved-detail-section-note">Wesentliche Aufnahmedaten</span>
+          </div>
           <div id="savedDetailCapture" class="saved-detail-meta"></div>
         </div>
 
+        <div id="savedDetailTechnicalSection" class="saved-detail-section saved-detail-section-secondary hidden">
+          <div class="saved-detail-section-heading">
+            <p class="saved-detail-section-title">Weitere Technik</p>
+            <span class="saved-detail-section-note">Zusätzliche EXIF-Daten</span>
+          </div>
+          <div id="savedDetailTechnical" class="saved-detail-meta"></div>
+        </div>
+
         <div class="saved-detail-section">
-          <p class="saved-detail-section-title">Datei &amp; Urheber</p>
+          <div class="saved-detail-section-heading">
+            <p class="saved-detail-section-title">Datei &amp; Urheber</p>
+            <span class="saved-detail-section-note">Dateibezogene Angaben</span>
+          </div>
           <div id="savedDetailFile" class="saved-detail-meta"></div>
         </div>
 
@@ -407,6 +421,6 @@
     </div>
   </footer>
 
-  <script src="script.js?v=20260817-photo-record-v11"></script>
+  <script src="script.js?v=20260817-photo-record-v12"></script>
 </body>
 </html>

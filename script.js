@@ -817,6 +817,8 @@ console.info("Fotografie Stuttgart · EXIF Lab · Photo Record v10 geladen");
     const kicker = $("#savedDetailKicker");
     const type = $("#savedDetailType");
     const capture = $("#savedDetailCapture");
+    const technical = $("#savedDetailTechnical");
+    const technicalSection = $("#savedDetailTechnicalSection");
     const file = $("#savedDetailFile");
     const gps = $("#savedDetailGps");
     const gpsSection = $("#savedDetailGpsSection");
@@ -858,22 +860,29 @@ console.info("Fotografie Stuttgart · EXIF Lab · Photo Record v10 geladen");
       ["Blende", item.aperture],
       ["ISO", item.iso],
       ["Brennweite", item.focal],
-      ["Bildgröße", item.dimensions],
+      ["Bildgröße", item.dimensions]
+    ];
+    const technicalRows = [
       ["Messmethode", item.metering],
       ["Weißabgleich", item.whiteBalance],
       ["Blitz", item.flash],
       ["Aufnahmeprogramm", item.exposureProgram],
-      ["Software", item.software]
+      ["Software", item.software],
+      ["Kamera-Seriennummer", item.cameraSerial],
+      ["Objektiv-Seriennummer", item.lensSerial]
     ];
     const fileRows = [
       ["Datei", item.name],
       ["Autor", item.author],
-      ["Urheberrecht", item.copyright],
-      ["Kamera-Seriennummer", item.cameraSerial],
-      ["Objektiv-Seriennummer", item.lensSerial]
+      ["Urheberrecht", item.copyright]
     ];
     renderDetailRows(capture, captureRows);
     renderDetailRows(file, fileRows);
+    renderDetailRows(technical, technicalRows);
+    if (technicalSection) {
+      const hasTechnicalValue = technicalRows.some(([, value]) => value !== undefined && value !== null && String(value) !== "" && !["Nicht vorhanden", "—", "-"].includes(String(value)));
+      technicalSection.classList.toggle("hidden", !hasTechnicalValue);
+    }
 
     if (gpsSection) gpsSection.classList.toggle("hidden", !hasGps);
     if (hasGps) {

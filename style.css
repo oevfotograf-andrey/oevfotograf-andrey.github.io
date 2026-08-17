@@ -2227,3 +2227,60 @@ button:disabled { opacity:.45; cursor:not-allowed; }
   .saved-detail-image-wrap { padding:22px; }
   .saved-detail-body { padding:34px 24px 28px; }
 }
+
+
+/* Photo record refinement · v12 hierarchy */
+.saved-detail-section-heading {
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:11px;
+}
+.saved-detail-section-heading .saved-detail-section-title {
+  margin:0;
+}
+.saved-detail-section-note {
+  color:rgba(255,255,255,.32);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.saved-detail-section-primary {
+  margin-top:27px;
+}
+.saved-detail-section-secondary {
+  margin-top:30px;
+  padding-top:26px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.saved-detail-section-secondary .saved-detail-meta {
+  opacity:.9;
+}
+.saved-detail-section-secondary .saved-detail-meta > div {
+  padding-top:13px;
+  padding-bottom:13px;
+}
+.saved-detail-section-secondary .saved-detail-meta strong {
+  font-size:12px;
+}
+.saved-detail-meta > div.is-missing {
+  background:rgba(255,255,255,.008);
+}
+.saved-detail-meta > div.is-missing strong {
+  color:rgba(255,255,255,.22);
+  font-weight:600;
+}
+.saved-detail-meta > div.is-missing span {
+  color:rgba(255,255,255,.20);
+}
+@media (max-width:700px) {
+  .saved-detail-section-heading {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:4px;
+  }
+  .saved-detail-section-note { white-space:normal; }
+}
