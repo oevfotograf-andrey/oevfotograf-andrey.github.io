@@ -328,6 +328,20 @@
     </section>
   </main>
 
+  <div id="savedDetailModal" class="saved-detail-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="savedDetailTitle">
+    <div class="saved-detail-dialog">
+      <button id="savedDetailClose" class="saved-detail-close" type="button" aria-label="Details schließen">×</button>
+      <div class="saved-detail-image-wrap"><img id="savedDetailImage" alt=""></div>
+      <div class="saved-detail-body">
+        <p class="eyebrow" id="savedDetailKicker">EXIF · LOKALES ARCHIV</p>
+        <h2 id="savedDetailTitle">Gespeicherte Aufnahme</h2>
+        <div id="savedDetailMeta" class="saved-detail-meta"></div>
+        <div id="savedDetailLocation" class="saved-detail-location hidden"></div>
+        <a id="savedDetailMapLink" class="button primary hidden" target="_blank" rel="noopener noreferrer">OpenStreetMap öffnen ↗</a>
+      </div>
+    </div>
+  </div>
+
   <div id="photoModal" class="photo-modal hidden" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <button id="modalClose" class="modal-close" type="button" aria-label="Ansicht schließen">×</button>
     <div class="modal-content">

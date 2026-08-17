@@ -724,7 +724,10 @@
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(item.camera)}</span>
         <small>${escapeHtml(item.date)}${item.address ? " · " + escapeHtml(item.address) : ""}</small>
-        ${item.lat !== null && item.lon !== null ? `<button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Auf Karte zeigen →</button>` : ""}
+        <div class="saved-card-actions">
+          <button type="button" class="saved-open saved-details" data-detail-id="${escapeHtml(item.id)}">Details →</button>
+          ${item.lat !== null && item.lon !== null ? `<button type="button" class="saved-open" data-open-id="${escapeHtml(item.id)}">Auf Karte zeigen →</button>` : ""}
+        </div>
       `;
       grid.appendChild(card);
     });
@@ -747,7 +750,106 @@
         }
       });
     });
+
+    grid.querySelectorAll("[data-detail-id]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const item = (await getSavedAnalyses()).find(entry => entry.id === button.dataset.detailId);
+        if (item) openSavedDetail(item);
+      });
+    });
   }
+
+  // Saved-analysis detail view. The image stays local: IndexedDB stores the
+  // original Blob and the modal creates only a temporary object URL.
+  let savedDetailObjectUrl = null;
+
+  function closeSavedDetail() {
+    const modal = $("#savedDetailModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    if (savedDetailObjectUrl) {
+      URL.revokeObjectURL(savedDetailObjectUrl);
+      savedDetailObjectUrl = null;
+    }
+  }
+
+  function detailRows(item) {
+    const rows = [
+      ["Kamera", item.camera], ["Objektiv", item.lens],
+      ["Aufnahmedatum", item.date], ["Verschlusszeit", item.shutter],
+      ["Blende", item.aperture], ["ISO", item.iso],
+      ["Brennweite", item.focal], ["Bildgröße", item.dimensions],
+      ["Autor", item.author], ["Urheberrecht", item.copyright],
+      ["Messmethode", item.metering], ["Weißabgleich", item.whiteBalance],
+      ["Blitz", item.flash], ["Aufnahmeprogramm", item.exposureProgram],
+      ["Software", item.software], ["Seriennummer Kamera", item.cameraSerial],
+      ["Seriennummer Objektiv", item.lensSerial], ["GPS-Höhe", item.altitude]
+    ];
+    if (item.lat !== null && item.lon !== null && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon))) {
+      rows.push(["Koordinaten", `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`]);
+      rows.push(["Aufnahmeort", item.address || "GPS vorhanden"]);
+      if (Number.isFinite(Number(item.bearing))) rows.push(["Richtung", `${directionName(Number(item.bearing))} · ${formatNumber(Number(item.bearing), 0)}°`]);
+    }
+    return rows.filter(([,value]) => value !== undefined && value !== null && String(value) !== "");
+  }
+
+  function openSavedDetail(item) {
+    const modal = $("#savedDetailModal");
+    const image = $("#savedDetailImage");
+    const title = $("#savedDetailTitle");
+    const kicker = $("#savedDetailKicker");
+    const meta = $("#savedDetailMeta");
+    const location = $("#savedDetailLocation");
+    const mapLink = $("#savedDetailMapLink");
+    if (!modal || !image || !title || !meta) return;
+
+    if (savedDetailObjectUrl) URL.revokeObjectURL(savedDetailObjectUrl);
+    savedDetailObjectUrl = null;
+    if (item.imageBlob instanceof Blob) {
+      savedDetailObjectUrl = URL.createObjectURL(item.imageBlob);
+      image.src = savedDetailObjectUrl;
+      image.alt = item.name || "Gespeicherte Aufnahme";
+      image.classList.remove("hidden");
+    } else {
+      image.removeAttribute("src");
+      image.alt = "Keine Bilddatei im lokalen Archiv";
+      image.classList.add("hidden");
+    }
+
+    title.textContent = item.name || "Gespeicherte Aufnahme";
+    kicker.textContent = item.lat !== null && item.lon !== null ? "GPS · LOKALES ARCHIV" : "EXIF · LOKALES ARCHIV";
+    meta.innerHTML = detailRows(item).map(([label,value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+
+    const hasGps = Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)) && !(Number(item.lat) === 0 && Number(item.lon) === 0);
+    if (location) {
+      location.classList.toggle("hidden", !hasGps);
+      if (hasGps) location.textContent = item.address || `${Number(item.lat).toFixed(6)}, ${Number(item.lon).toFixed(6)}`;
+    }
+    if (mapLink) {
+      if (hasGps) {
+        const lat = Number(item.lat), lon = Number(item.lon);
+        mapLink.href = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
+        mapLink.classList.remove("hidden");
+      } else {
+        mapLink.classList.add("hidden");
+        mapLink.removeAttribute("href");
+      }
+    }
+
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  $("#savedDetailClose")?.addEventListener("click", closeSavedDetail);
+  $("#savedDetailModal")?.addEventListener("click", event => {
+    if (event.target.id === "savedDetailModal") closeSavedDetail();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !$("#savedDetailModal")?.classList.contains("hidden")) closeSavedDetail();
+  });
 
   saveExifButton?.addEventListener("click", async () => {
     if (!currentAnalysis) return;
