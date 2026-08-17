@@ -353,6 +353,58 @@
     return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${encodeURIComponent(lat)}%2C${encodeURIComponent(lon)}`;
   }
 
+  function renderOsmTileMap(container, lat, lon, zoom = 16) {
+    if (!container) return;
+    container.replaceChildren();
+
+    const size = 256;
+    const grid = 3;
+    const n = 2 ** zoom;
+    const latRad = lat * Math.PI / 180;
+    const worldX = ((lon + 180) / 360) * n;
+    const worldY = ((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2) * n;
+    const centerTileX = Math.floor(worldX);
+    const centerTileY = Math.floor(worldY);
+    const offsetX = (worldX - centerTileX) * size;
+    const offsetY = (worldY - centerTileY) * size;
+
+    container.style.setProperty("--map-offset-x", `${-(offsetX + size)}px`);
+    container.style.setProperty("--map-offset-y", `${-(offsetY + size)}px`);
+
+    const tiles = document.createDocumentFragment();
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const x = ((centerTileX + dx) % n + n) % n;
+        const y = centerTileY + dy;
+        if (y < 0 || y >= n) continue;
+        const img = document.createElement("img");
+        img.className = "osm-map-tile";
+        img.alt = "";
+        img.draggable = false;
+        img.loading = "eager";
+        img.decoding = "async";
+        img.src = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+        img.style.left = `${(dx + 1) * size}px`;
+        img.style.top = `${(dy + 1) * size}px`;
+        tiles.appendChild(img);
+      }
+    }
+    container.appendChild(tiles);
+
+    const marker = document.createElement("div");
+    marker.className = "osm-map-marker";
+    marker.setAttribute("aria-hidden", "true");
+    marker.innerHTML = '<span></span>';
+    marker.style.left = `${size + offsetX}px`;
+    marker.style.top = `${size + offsetY}px`;
+    container.appendChild(marker);
+
+    const attribution = document.createElement("div");
+    attribution.className = "osm-map-attribution";
+    attribution.innerHTML = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+    container.appendChild(attribution);
+  }
+
   async function analyzeFile(file) {
     if (!file) return;
     if (!/^image\/(jpeg|jpg|tiff|png)$/i.test(file.type) && !/\.(jpe?g|tiff?|png)$/i.test(file.name)) {
@@ -739,14 +791,14 @@
   // on a third-party JavaScript map CDN, which can be blocked on some browsers,
   // privacy extensions or GitHub Pages deployments.
   function showLocationOnMap(item, options = {}) {
-    const frame = $("#locationMapFrame");
+    const canvas = $("#locationMapCanvas");
     const content = $("#locationMapContent");
     const empty = $("#locationMapEmpty");
     const fallback = $("#locationMapFallback");
     const label = $("#locationMapLabel");
     const panel = document.querySelector(".location-map-panel");
 
-    if (!frame || !content || !empty || !item) return false;
+    if (!canvas || !content || !empty || !item) return false;
 
     const lat = Number(item.lat);
     const lon = Number(item.lon);
@@ -754,14 +806,11 @@
       return false;
     }
 
-    const embedUrl = buildMapUrl(lat, lon);
+    renderOsmTileMap(canvas, lat, lon, 16);
     const directMapUrl =
       `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}` +
       `&mlon=${encodeURIComponent(lon)}` +
       `#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
-
-    frame.src = embedUrl;
-    frame.title = `Aufnahmeort: ${item.name || "GPS-Aufnahme"}`;
 
     if (fallback) {
       fallback.href = directMapUrl;

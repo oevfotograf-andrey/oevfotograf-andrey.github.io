@@ -261,13 +261,11 @@
             <p>Sobald eine gespeicherte Aufnahme GPS-Daten besitzt, erscheint hier ihre Karte.</p>
           </div>
           <div id="locationMapContent" class="location-map-content hidden">
-            <iframe
-              id="locationMapFrame"
-              class="location-map-frame"
-              title="Aufnahmeort auf OpenStreetMap"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              src="about:blank"></iframe>
+            <div
+              id="locationMapCanvas"
+              class="location-map-canvas"
+              role="img"
+              aria-label="OpenStreetMap-Karte des Aufnahmeorts"></div>
             <div class="location-map-bar">
               <div>
                 <span class="eyebrow">AUSGEWÄHLTER ORT</span>
