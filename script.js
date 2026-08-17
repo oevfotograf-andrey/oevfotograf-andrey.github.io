@@ -708,7 +708,24 @@
   $$(".photo-card").forEach(card => {
     card.setAttribute("tabindex", "0");
     card.setAttribute("role", "button");
-    card.addEventListener("click", () => {
+
+    // Desktop: a short hover opens the same full-screen viewer.
+    // Touch devices: tapping the card opens it instead.
+    let hoverTimer = null;
+    card.addEventListener("pointerenter", event => {
+      if (event.pointerType !== "mouse") return;
+      window.clearTimeout(hoverTimer);
+      hoverTimer = window.setTimeout(() => {
+        refreshModalItems();
+        const index = modalItems.indexOf(card);
+        if (index >= 0 && modal?.classList.contains("hidden")) openPortfolioModal(index);
+      }, 260);
+    });
+    card.addEventListener("pointerleave", () => window.clearTimeout(hoverTimer));
+
+    card.addEventListener("click", event => {
+      // The desktop hover already opened the viewer; don't restart it.
+      if (!modal?.classList.contains("hidden")) return;
       refreshModalItems();
       const index = modalItems.indexOf(card);
       if (index >= 0) openPortfolioModal(index);
@@ -716,7 +733,9 @@
     card.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        card.click();
+        refreshModalItems();
+        const index = modalItems.indexOf(card);
+        if (index >= 0) openPortfolioModal(index);
       }
     });
   });
