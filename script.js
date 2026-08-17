@@ -675,6 +675,7 @@
 
     modalIndex = index;
     modal.classList.remove("hidden");
+    modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
 
@@ -704,6 +705,7 @@
 
   function closePortfolioModal() {
     modal?.classList.add("hidden");
+    modal?.classList.remove("is-open");
     modal?.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
   }
@@ -738,6 +740,7 @@
   // mobile browsers from restoring an accidentally open dialog state.
   if (modal) {
     modal.classList.add("hidden");
+    modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
     // Remove any legacy Back/Zurück control that may survive from an older
@@ -779,6 +782,7 @@
   window.addEventListener("pageshow", () => {
     if (modal) {
       modal.classList.add("hidden");
+      modal.classList.remove("is-open");
       modal.setAttribute("aria-hidden", "true");
       document.body.classList.remove("modal-open");
     }

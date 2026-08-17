@@ -1626,3 +1626,26 @@ body.modal-open { overflow:hidden; }
 .photo-modal [data-modal-back] {
   display: none !important;
 }
+
+
+/* HARD INITIAL-STATE FIX
+   The lightbox is completely absent until script.js explicitly opens it.
+   This prevents desktop/mobile browsers or cached CSS from displaying the
+   overlay during the first page paint. */
+.photo-modal {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.photo-modal.is-open {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+@media (max-width: 900px) {
+  .photo-modal.is-open {
+    display: block !important;
+  }
+}
