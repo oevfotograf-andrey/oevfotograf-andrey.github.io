@@ -240,17 +240,24 @@ h1 em { font-family:var(--serif); font-weight:400; letter-spacing:-.05em; }
 }
 .p2 { background:linear-gradient(160deg,#202020,#101010); }
 .bus-photo {
-  background-image:
-    linear-gradient(0deg, rgba(0,0,0,.18), rgba(0,0,0,0) 48%),
-    var(--bus-photo);
-  background-size: cover;
-  background-position: 52% 58%;
+  position: relative;
+  background: linear-gradient(160deg,#202020,#101010);
+}
+.bus-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 52% 58%;
+  z-index: 0;
 }
 .p3 { background:linear-gradient(140deg,#191919,#282828); }
 .p4 { background:linear-gradient(160deg,#262626,#111111); }
 .p5 { background:linear-gradient(135deg,#0e0e0e,#252525); }
 .p6 { background:linear-gradient(160deg,#222,#0d0d0d); }
-.photo-placeholder span { position:relative; z-index:1; font-size:9px; letter-spacing:.2em; font-weight:800; }
+.photo-placeholder span { position:relative; z-index:3; font-size:9px; letter-spacing:.2em; font-weight:800; }
 .card-meta { display:flex; justify-content:space-between; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.1em; padding-top:13px; }
 .photo-card h3 { font-size:18px; letter-spacing:-.025em; margin:7px 0 0; }
 .upload-note {
