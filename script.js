@@ -230,16 +230,16 @@
 
       const img = document.createElement("img");
       img.className = "photo-image";
+
+      if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
+  img.classList.add("train-photo");
+}
+      
       img.loading = index < 3 ? "eager" : "lazy";
       img.decoding = "async";
       img.src = imagePath(photo);
       img.alt = photo.title;
 
-      // Spezielle Bildposition für die Fotokarte:
-if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
-  img.style.objectPosition = "-50% center";
-}
-      
       const fallback = document.createElement("div");
       fallback.className = "photo-fallback";
       fallback.innerHTML = `
