@@ -145,10 +145,10 @@
     {
       id: 12,
       file: "im-sonnenuntergang.jpg",
-      category: "tram",
+      category: "sbahn",
       location: "Stuttgart",
       date: "2026-08-14",
-      kicker: "ÖPNV · STUTTGART",
+      kicker: "S-BAHN · STUTTGART",
       title: "Im Sonnenuntergang",
       description: "Ein ÖPNV-Moment im warmen Licht des Sonnenuntergangs."
     },
