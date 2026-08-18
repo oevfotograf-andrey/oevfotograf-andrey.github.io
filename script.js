@@ -237,7 +237,7 @@
 
       // Spezielle Bildposition für die Fotokarte:
 if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
-  img.style.objectPosition = "-10% center";
+  img.style.objectPosition = "-50% center";
 }
       
       const fallback = document.createElement("div");
