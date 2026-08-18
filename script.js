@@ -109,6 +109,68 @@
       kicker: "S-BAHN · INTERIEUR",
       title: "Blick aus dem Zug",
       description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
+    },
+
+    // Ältere Archivkarten – von neuer nach älter sortiert.
+    {
+      id: 9,
+      file: "calw-regional-warten-an-der-endstation.jpg",
+      category: "regional",
+      location: "Calw",
+      date: "2026-08-17",
+      kicker: "REGIONAL · CALW",
+      title: "Calw/Regional/Warten an der Endstation",
+      description: "Ein ruhiger Moment an der Endstation in Calw."
+    },
+    {
+      id: 10,
+      file: "regionalbahn-im-nordschwarzwald.jpg",
+      category: "regional",
+      location: "Nordschwarzwald",
+      date: "2026-08-16",
+      kicker: "REGIONAL · NORDSCHWARZWALD",
+      title: "Regionalbahn im Nordschwarzwald",
+      description: "Eine Regionalbahn unterwegs im Nordschwarzwald."
+    },
+    {
+      id: 11,
+      file: "letzte-fahrt-in-der-innenstadt.jpg",
+      category: "bus",
+      location: "Stuttgart",
+      date: "2026-08-15",
+      kicker: "BUS · STUTTGART",
+      title: "Letzte Fahrt in der Innenstadt",
+      description: "Ein Bus auf seiner letzten Fahrt durch die Stuttgarter Innenstadt."
+    },
+    {
+      id: 12,
+      file: "im-sonnenuntergang.jpg",
+      category: "tram",
+      location: "Stuttgart",
+      date: "2026-08-14",
+      kicker: "ÖPNV · STUTTGART",
+      title: "Im Sonnenuntergang",
+      description: "Ein ÖPNV-Moment im warmen Licht des Sonnenuntergangs."
+    },
+    {
+      id: 13,
+      file: "linien-treffen-sich.jpg",
+      category: "tram",
+      location: "Stuttgart",
+      date: "2026-08-13",
+      kicker: "TRAM · STUTTGART",
+      title: "Linien treffen sich",
+      description: "Zwei Linien treffen sich in einem gemeinsamen Moment im Stuttgarter Netz."
+    },
+    {
+      id: 14,
+      file: "tageslicht-an-der-stadtbahn.jpg",
+      category: "tram",
+      location: "Stuttgart",
+      date: "2026-08-12",
+      kicker: "TRAM · STUTTGART",
+      title: "Tageslicht an der Stadtbahn",
+      description: "Eine Stadtbahnaufnahme bei klarem Tageslicht."
     }
   ];
 
