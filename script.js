@@ -235,6 +235,11 @@
       img.src = imagePath(photo);
       img.alt = photo.title;
 
+      // Spezielle Bildposition für die Fotokarte:
+if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
+  img.style.objectPosition = "30% center";
+}
+      
       const fallback = document.createElement("div");
       fallback.className = "photo-fallback";
       fallback.innerHTML = `
