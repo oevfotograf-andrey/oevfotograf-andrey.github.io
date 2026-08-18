@@ -240,6 +240,10 @@
       img.src = imagePath(photo);
       img.alt = photo.title;
 
+      if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
+    img.style.objectPosition = "-50% center";
+}
+
       const fallback = document.createElement("div");
       fallback.className = "photo-fallback";
       fallback.innerHTML = `
