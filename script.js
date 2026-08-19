@@ -231,7 +231,7 @@
       const img = document.createElement("img");
       img.className = "photo-image";
 
-    if (photo.file === "letzte-fahrt-in-der-innenstadt.jpg") {
+    if (photo.file === "im-sonnenuntergang.jpg") {
   img.classList.add("train-photo");
 }
       
