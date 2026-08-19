@@ -99,7 +99,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 }
 .photo-image{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease,filter .35s ease}
 .photo-image.train-photo {
-    object-fit: none;
+    object-fit: cover;
     object-position: left center;
 }
 .photo-card:hover .photo-image{transform:scale(1.035)}
