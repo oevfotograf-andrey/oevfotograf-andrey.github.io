@@ -109,7 +109,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .photo-card h3{font-size:18px;letter-spacing:-.025em;margin:7px 0 0}
 @media (min-width:901px){
   .gallery-scroll .photo-card:last-child{
-    grid-column:1 / -1;
+    grid-column:1 / 3;
   }
 
   .gallery-scroll .photo-card:last-child .photo-image-wrap{
