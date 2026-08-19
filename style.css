@@ -99,8 +99,8 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 }
 .photo-image{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease,filter .35s ease}
 .photo-image.train-photo {
-    object-fit: contain;
-    object-position: center center;
+    object-fit: none;
+    object-position: left center;
 }
 .photo-card:hover .photo-image{transform:scale(1.035)}
 .photo-fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;background:linear-gradient(145deg,var(--surface-2),var(--surface));color:var(--muted);font-size:11px;letter-spacing:.15em;text-transform:uppercase}
