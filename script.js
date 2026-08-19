@@ -114,12 +114,12 @@
     // Ältere Archivkarten – von neuer nach älter sortiert.
     {
       id: 9,
-      file: "calw-regional-warten-an-der-endstation.jpg",
+      file: "IMG_2288.JPG",
       category: "regional",
       location: "Calw",
       date: "2026-08-17",
       kicker: "REGIONAL · CALW",
-      title: "Calw/Regional/Warten an der Endstation",
+      title: "Warten an der Endstation",
       description: "Ein ruhiger Moment an der Endstation in Calw."
     },
     {
@@ -230,15 +230,11 @@
 
       const img = document.createElement("img");
       img.className = "photo-image";
-
-    if (photo.file === "im-sonnenuntergang.jpg") {
-  img.classList.add("train-photo");
-}
-      
       img.loading = index < 3 ? "eager" : "lazy";
       img.decoding = "async";
       img.src = imagePath(photo);
       img.alt = photo.title;
+      if (photo.id === 9) img.style.objectPosition = "31% center";
 
       const fallback = document.createElement("div");
       fallback.className = "photo-fallback";
