@@ -113,7 +113,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   }
 
   .gallery-scroll .photo-card:last-child .photo-image-wrap{
-    aspect-ratio:16 / 7;
+    aspect-ratio:5 / 3;
   }
 }
 .gallery-scroll-hint{display:flex;justify-content:center;gap:18px;margin-top:12px;color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
