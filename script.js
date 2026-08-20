@@ -164,7 +164,7 @@
     },
     {
       id: 14,
-      file: "tageslicht-an-der-stadtbahn.jpg",
+      file: "TAGESLICHT-AN-DER-STADTBAHN.JPG",
       category: "tram",
       location: "Stuttgart",
       date: "2026-08-12",
