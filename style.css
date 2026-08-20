@@ -234,7 +234,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   }
   .lightbox-arrow.prev{left:4px}
   .lightbox-arrow.next{right:4px}
-  .lightbox-close{top:0;right:0}
+  .lightbox-close{top:-52px;right:0}
   .lightbox-help{display:none}
 }
 
