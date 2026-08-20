@@ -28,92 +28,110 @@
   // Portfolio gallery
   // -----------------------------
   // Die Dateien können später einfach ersetzt/erweitert werden.
-  // Aktuelle neue Serie: 8 Aufnahmen.
+  // Neue Archivserie: 10 Originalaufnahmen.
   const photos = [
     {
       id: 1,
-      file: "s-bahn-423-839-01.jpg",
-      category: "bus",
-      location: "Nordschwarzwald",
-      date: "2026-08-18",
-      kicker: "BUS · NORDSCHWARZWALD",
-      title: "Im tiefen Calwer ZOB",
-      description: "Ein Schnappschuss aus dem Nordschwarzwald am Calwer ZOB."
+      file: "IMG_0431.JPG",
+      category: "tram",
+      location: "Stuttgart",
+      sortDate: "2026-08-20",
+      kicker: "TRAM · STUTTGART",
+      title: "Linien treffen sich",
+      description: "Zwei Stuttgarter Stadtbahnen treffen sich an einer Kreuzung im Stadtverkehr."
     },
     {
       id: 2,
-      file: "s-bahn-423-839-02.jpg",
-      category: "regional",
-      location: "Nordschwarzwald",
-      date: "2026-08-18",
-      kicker: "REGIONAL · NORDSCHWARZWALD",
-      title: "Neue Eisenbahn im Hang",
-      description: "Eine neue Eisenbahn im Hang des Nordschwarzwalds – aufgenommen aus kurzer Distanz."
+      file: "IMG_1685(1).JPG",
+      category: "bus",
+      location: "Stuttgart",
+      sortDate: "2026-08-20",
+      kicker: "BUS · STUTTGART",
+      title: "Letzte Fahrt in der Innenstadt",
+      description: "Ein roter Gelenkbus unterwegs im Stuttgarter Innenstadtverkehr."
     },
     {
       id: 3,
-      file: "s-bahn-423-839-03.jpg",
-      category: "bus",
+      file: "IMG_2247.JPG",
+      category: "regional",
       location: "Nordschwarzwald",
-      date: "2026-08-18",
-      kicker: "BUS · NORDSCHWARZWALD",
-      title: "Schnappschuss vom Zug",
-      description: "Ein spontaner Schnappschuss aus dem Zug im Nordschwarzwald."
+      sortDate: "2026-08-20",
+      kicker: "REGIONAL · NORDSCHWARZWALD",
+      title: "Regionalbahn im Nordschwarzwald",
+      description: "Ein moderner Regionaltriebzug auf der Strecke durch den Nordschwarzwald."
     },
     {
       id: 4,
-      file: "s-bahn-423-839-04.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
-      date: "2026-08-18",
-      kicker: "S-BAHN · SERIE 01",
-      title: "Am Bahnsteig entlang",
-      description: "Die Seitenansicht des Zuges verschwindet in der Perspektive der Bahnsteigkante."
+      file: "IMG_2263.JPG",
+      category: "bus",
+      location: "Calw",
+      sortDate: "2026-08-20",
+      kicker: "BUS · CALW",
+      title: "Im tiefen Calwer ZOB",
+      description: "Ein weißer Mercedes-Benz-Bus im geschützten Bereich des Calwer ZOB."
     },
     {
       id: 5,
-      file: "s-bahn-423-839-05.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
-      date: "2026-08-18",
-      kicker: "S-BAHN · SERIE 01",
-      title: "Nah dran",
-      description: "Ein enger Ausschnitt der Front mit dem Fahrzeug 423 839."
+      file: "IMG_2244(1).JPG",
+      category: "regional",
+      location: "Nordschwarzwald",
+      sortDate: "2026-08-20",
+      kicker: "REGIONAL · NORDSCHWARZWALD",
+      title: "Neue Eisenbahn im Hang",
+      description: "Der neue Regionaltriebzug folgt der Strecke am bewaldeten Hang entlang."
     },
     {
       id: 6,
-      file: "s-bahn-kupplung-01.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
-      date: "2026-08-18",
-      kicker: "S-BAHN · DETAIL",
-      title: "Zwischen zwei Triebzügen",
-      description: "Ein ungewöhnlicher Blick genau in den Bereich zwischen zwei gekuppelten Fahrzeugen."
+      file: "IMG_2297.JPG",
+      category: "bus",
+      location: "Nordschwarzwald",
+      sortDate: "2026-08-20",
+      kicker: "BUS · NORDSCHWARZWALD",
+      title: "Schnappschuss vom Zug",
+      description: "Ein farbenfroher Regionalbus im Vorbeifahren."
     },
     {
       id: 7,
-      file: "s-bahn-kupplung-02.jpg",
+      file: "IMG_2322.JPG",
       category: "sbahn",
       location: "Stuttgart",
-      date: "2026-08-18",
-      kicker: "S-BAHN · DETAIL",
-      title: "Kupplung im Detail",
-      description: "Die beiden Fahrzeugenden bilden einen schmalen Blickkorridor auf das Grün hinter dem Zug."
+      sortDate: "2026-08-20",
+      kicker: "S-BAHN · STUTTGART",
+      title: "Am Bahnsteig entlang",
+      description: "Ein S-Bahn-Zug zieht sich entlang des Bahnsteigs in die Tiefe des Motivs."
     },
     {
       id: 8,
-      file: "s-bahn-kupplung-03.jpg",
+      file: "IMG_2328.JPG",
       category: "sbahn",
       location: "Stuttgart",
-      date: "2026-08-18",
-      kicker: "S-BAHN · INTERIEUR",
-      title: "Blick aus dem Zug",
-      description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
+      sortDate: "2026-08-20",
+      kicker: "S-BAHN · STUTTGART",
+      title: "Nah dran",
+      description: "Eine nahe Perspektive auf die Front des S-Bahn-Triebzugs."
     },
-
-    // Ältere Archivkarten – von neuer nach älter sortiert.
     {
       id: 9,
+      file: "IMG_2330.JPG",
+      category: "sbahn",
+      location: "Stuttgart",
+      sortDate: "2026-08-20",
+      kicker: "S-BAHN · DETAIL",
+      title: "Zwischen zwei Triebzügen",
+      description: "Ein ungewöhnlicher Blick genau in den schmalen Raum zwischen zwei Fahrzeugen."
+    },
+    {
+      id: 10,
+      file: "IMG_2329.JPG",
+      category: "sbahn",
+      location: "Stuttgart",
+      sortDate: "2026-08-20",
+      kicker: "S-BAHN · DETAIL",
+      title: "Kupplung im Detail",
+      description: "Die beiden Fahrzeugenden und ihre Kupplungen aus unmittelbarer Nähe."
+    },
+    {
+      id: 11,
       file: "IMG_2288.JPG",
       category: "regional",
       location: "Calw",
@@ -121,26 +139,6 @@
       kicker: "REGIONAL · CALW",
       title: "Warten an der Endstation",
       description: "Ein ruhiger Moment an der Endstation in Calw."
-    },
-    {
-      id: 10,
-      file: "regionalbahn-im-nordschwarzwald.jpg",
-      category: "regional",
-      location: "Nordschwarzwald",
-      date: "2026-08-16",
-      kicker: "REGIONAL · NORDSCHWARZWALD",
-      title: "Regionalbahn im Nordschwarzwald",
-      description: "Eine Regionalbahn unterwegs im Nordschwarzwald."
-    },
-    {
-      id: 11,
-      file: "letzte-fahrt-in-der-innenstadt.jpg",
-      category: "bus",
-      location: "Stuttgart",
-      date: "2026-08-15",
-      kicker: "BUS · STUTTGART",
-      title: "Letzte Fahrt in der Innenstadt",
-      description: "Ein Bus auf seiner letzten Fahrt durch die Stuttgarter Innenstadt."
     },
     {
       id: 12,
@@ -154,16 +152,6 @@
     },
     {
       id: 13,
-      file: "linien-treffen-sich.jpg",
-      category: "tram",
-      location: "Stuttgart",
-      date: "2026-08-13",
-      kicker: "TRAM · STUTTGART",
-      title: "Linien treffen sich",
-      description: "Zwei Linien treffen sich in einem gemeinsamen Moment im Stuttgarter Netz."
-    },
-    {
-      id: 14,
       file: "TAGESLICHT-AN-DER-STADTBAHN.JPG",
       category: "tram",
       location: "Stuttgart",
@@ -182,7 +170,8 @@
   let currentLightboxIndex = 0;
 
   function dateValue(photo) {
-    return new Date(`${photo.date}T12:00:00`).getTime();
+    const value = photo.sortDate || photo.date;
+    return value ? new Date(`${value}T12:00:00`).getTime() : 0;
   }
 
   function sortedPhotos(list) {
