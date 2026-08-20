@@ -33,32 +33,32 @@
     {
       id: 1,
       file: "s-bahn-423-839-01.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
+      category: "bus",
+      location: "Nordschwarzwald",
       date: "2026-08-18",
-      kicker: "S-BAHN · SERIE 01",
-      title: "423 839 am Bahnsteig",
-      description: "Ein S-Bahn-Triebzug der Baureihe 423 unter der Bahnsteigüberdachung."
+      kicker: "BUS · NORDSCHWARZWALD",
+      title: "Im tiefen Calwer ZOB",
+      description: "Ein Schnappschuss aus dem Nordschwarzwald am Calwer ZOB."
     },
     {
       id: 2,
       file: "s-bahn-423-839-02.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
+      category: "regional",
+      location: "Nordschwarzwald",
       date: "2026-08-18",
-      kicker: "S-BAHN · SERIE 01",
-      title: "Linie, Bahnsteig, Bewegung",
-      description: "Die lange Fahrzeugflucht und die Bahnsteigkante führen den Blick tief in das Motiv."
+      kicker: "REGIONAL · NORDSCHWARZWALD",
+      title: "Neue Eisenbahn im Hang",
+      description: "Eine neue Eisenbahn im Hang des Nordschwarzwalds – aufgenommen aus kurzer Distanz."
     },
     {
       id: 3,
       file: "s-bahn-423-839-03.jpg",
-      category: "sbahn",
-      location: "Stuttgart",
+      category: "bus",
+      location: "Nordschwarzwald",
       date: "2026-08-18",
-      kicker: "S-BAHN · SERIE 01",
-      title: "Frontansicht 423 839",
-      description: "Eine nähere Perspektive auf die markante Front des S-Bahn-Triebzugs."
+      kicker: "BUS · NORDSCHWARZWALD",
+      title: "Schnappschuss vom Zug",
+      description: "Ein spontaner Schnappschuss aus dem Zug im Nordschwarzwald."
     },
     {
       id: 4,
