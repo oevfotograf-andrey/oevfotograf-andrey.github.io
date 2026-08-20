@@ -102,7 +102,7 @@
     },
     {
       id: 8,
-      file: "s-bahn-kupplung-03.jpg",
+      file: "img_2331.jpg",
       category: "sbahn",
       location: "Stuttgart",
       date: "2026-08-18",
