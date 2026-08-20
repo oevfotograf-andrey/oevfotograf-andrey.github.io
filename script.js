@@ -131,11 +131,11 @@
       description: "Die beiden Fahrzeugenden und ihre Kupplungen aus unmittelbarer Nähe."
     },
     {
-      id: 11,
+      id: 0,
       file: "s-bahn-kupplung-03.jpg",
       category: "sbahn",
       location: "Stuttgart",
-      date: "2026-08-18",
+      sortDate: "2026-08-20",
       kicker: "S-BAHN · INTERIEUR",
       title: "Blick aus dem Zug",
       description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
