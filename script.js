@@ -132,6 +132,16 @@
     },
     {
       id: 11,
+      file: "s-bahn-kupplung-03.jpg",
+      category: "sbahn",
+      location: "Stuttgart",
+      date: "2026-08-18",
+      kicker: "S-BAHN · INTERIEUR",
+      title: "Blick aus dem Zug",
+      description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
+    },
+    {
+      id: 12,
       file: "IMG_2288.JPG",
       category: "regional",
       location: "Calw",
@@ -141,7 +151,7 @@
       description: "Ein ruhiger Moment an der Endstation in Calw."
     },
     {
-      id: 12,
+      id: 13,
       file: "im-sonnenuntergang.jpg",
       category: "sbahn",
       location: "Stuttgart",
@@ -151,7 +161,7 @@
       description: "Ein ÖPNV-Moment im warmen Licht des Sonnenuntergangs."
     },
     {
-      id: 13,
+      id: 14,
       file: "TAGESLICHT-AN-DER-STADTBAHN.JPG",
       category: "tram",
       location: "Stuttgart",
