@@ -102,7 +102,7 @@
     },
     {
       id: 8,
-      file: "img_2331.jpg",
+      file: "s-bahn-kupplung-03.jpg",
       category: "sbahn",
       location: "Stuttgart",
       date: "2026-08-18",
@@ -164,7 +164,7 @@
     },
     {
       id: 14,
-      file: "TAGESLICHT-AN-DER-STADTBAHN.JPG",
+      file: "tageslicht-an-der-stadtbahn.jpg",
       category: "tram",
       location: "Stuttgart",
       date: "2026-08-12",
