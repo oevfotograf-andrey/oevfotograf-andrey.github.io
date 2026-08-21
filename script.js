@@ -208,24 +208,6 @@
     return galleryFavoriteIds.has(galleryFavoriteId(photo));
   }
 
-  function updateGalleryFavoriteButton(button, photo) {
-    if (!button || !photo) return;
-
-    const saved = isGalleryFavorite(photo);
-    button.classList.toggle("is-saved", saved);
-    button.setAttribute("aria-pressed", String(saved));
-    button.setAttribute(
-      "aria-label",
-      saved
-        ? `${photo.title} aus Favoriten entfernen`
-        : `${photo.title} zu Favoriten speichern`
-    );
-    button.textContent = saved ? "★" : "☆";
-    button.title = saved
-      ? "Aus Favoriten entfernen"
-      : "Zu Favoriten speichern";
-  }
-
   function updateLightboxFavoriteControl() {
     const button = $("#lightboxFavorite");
     const photo = visiblePhotos[currentLightboxIndex];
@@ -251,14 +233,9 @@
     );
   }
 
+  // Die Favoriten-Schaltfläche befindet sich bewusst nur in der Großansicht.
+  // So bleiben die Fotokarten in der Galerie frei von überlagernden Bedienelementen.
   function syncGalleryFavoriteControls() {
-    $$(".gallery-favorite").forEach((button) => {
-      const photo = photos.find(
-        (item) => String(item.id) === button.dataset.photoId
-      );
-      if (photo) updateGalleryFavoriteButton(button, photo);
-    });
-
     updateLightboxFavoriteControl();
   }
 
@@ -407,18 +384,7 @@
       overlay.className = "card-overlay";
       overlay.textContent = "Klick für Großansicht";
 
-      const favorite = document.createElement("button");
-      favorite.type = "button";
-      favorite.className = "gallery-favorite";
-      favorite.dataset.photoId = String(photo.id);
-      updateGalleryFavoriteButton(favorite, photo);
-      favorite.addEventListener("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        await toggleGalleryFavorite(photo, favorite);
-      });
-
-      wrap.append(img, fallback, overlay, favorite);
+      wrap.append(img, fallback, overlay);
 
       const meta = document.createElement("div");
       meta.className = "card-meta";
