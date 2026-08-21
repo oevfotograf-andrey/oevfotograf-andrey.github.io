@@ -81,6 +81,8 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .section-heading h2,.idea-section h2{font-size:clamp(42px,6vw,78px);line-height:.95;letter-spacing:-.055em;margin:0}
 .section-heading>p{color:var(--muted);max-width:500px;margin:0}
 .portfolio-toolbar{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:24px}
+.gallery-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.gallery-count{padding:9px 13px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px;letter-spacing:.06em;white-space:nowrap}
 .filters{display:flex;flex-wrap:wrap;gap:8px}
 .filter{border:1px solid var(--line);background:transparent;color:var(--muted);padding:9px 14px;border-radius:999px;cursor:pointer}
 .filter.active,.filter:hover{color:var(--text);border-color:var(--text)}
@@ -114,6 +116,14 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   min-width:0;
   cursor:pointer;
   align-self:start;
+  content-visibility:auto;
+  contain-intrinsic-size:360px 320px;
+  outline:none;
+}
+.photo-card:focus-visible .photo-image-wrap,
+.photo-card:focus-visible h3{
+  outline:2px solid var(--accent);
+  outline-offset:4px;
 }
 .photo-image-wrap{
   aspect-ratio:3/2;
@@ -125,12 +135,13 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   overflow:hidden;
   background:var(--surface-2);
 }
-.photo-image{width:100%;height:100%;display:block;object-fit:contain;transition:transform .45s ease,filter .35s ease}
+.photo-image{width:100%;height:100%;display:block;object-fit:contain;object-position:center;transition:filter .25s ease}
+.photo-card:hover .photo-image{filter:brightness(1.02)}
 .card-tageslicht .photo-image{object-position:20% center}
-.photo-card:hover .photo-image{transform:none}
+
 .photo-fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;background:linear-gradient(145deg,var(--surface-2),var(--surface));color:var(--muted);font-size:11px;letter-spacing:.15em;text-transform:uppercase}
 .photo-fallback strong{display:block;color:var(--text);font-size:14px;letter-spacing:.04em;text-transform:none;margin-bottom:5px}
-.card-overlay{position:absolute;left:12px;right:12px;bottom:12px;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.62);color:#fff;font-size:10px;letter-spacing:.05em}
+.card-overlay{position:absolute;left:12px;right:12px;bottom:12px;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.62);color:#fff;font-size:10px;letter-spacing:.05em;pointer-events:none}
 .card-meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding-top:13px}
 .photo-card h3{font-size:18px;letter-spacing:-.025em;margin:7px 0 0}
 .gallery-scroll-hint{display:flex;justify-content:center;gap:18px;margin-top:12px;color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
@@ -205,7 +216,8 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   .hero,.section-heading,.exif-result,.location-feature,.idea-section{grid-template-columns:1fr}
   .hero{padding-top:70px}
   .gallery-scroll{
-    max-height:720px;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    max-height:760px;
     overflow-x:hidden;
     overflow-y:auto;
     touch-action:pan-y;
@@ -215,6 +227,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
     flex-direction:column;
     align-items:flex-start;
   }
+  .gallery-tools{justify-content:flex-start}
   .blog-grid{grid-template-columns:1fr}
   .idea-section{margin-bottom:70px;padding:35px}
   .map-copy{padding:35px}
@@ -244,6 +257,10 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
     height:auto;
   }
   .gallery-scroll-hint{flex-direction:column;align-items:center;gap:4px}
+  .gallery-tools{width:100%;align-items:stretch}
+  .gallery-count{align-self:flex-start}
+  .sort-control{width:100%;justify-content:space-between}
+  .sort-control select{min-width:178px}
   .exif-result{padding:12px}
   #previewImage{min-height:280px}
   .metadata-grid{grid-template-columns:1fr}

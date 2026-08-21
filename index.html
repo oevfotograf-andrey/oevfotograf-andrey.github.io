@@ -74,17 +74,20 @@
           <button class="filter" data-filter="regional">Regional</button>
         </div>
 
-        <label class="sort-control">
-          <span>Sortierung</span>
-          <select id="sortSelect" aria-label="Bilder sortieren">
-            <option value="newest">Neueste zuerst</option>
-            <option value="oldest">Älteste zuerst</option>
-          </select>
-        </label>
+        <div class="gallery-tools">
+          <span class="gallery-count" id="galleryCount" aria-live="polite">14 Fotos</span>
+          <label class="sort-control">
+            <span>Sortierung</span>
+            <select id="sortSelect" aria-label="Bilder sortieren">
+              <option value="newest">Neueste zuerst</option>
+              <option value="oldest">Älteste zuerst</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div class="gallery-shell">
-        <div class="gallery-scroll" id="gallery" tabindex="0" aria-label="Fotogalerie">
+        <div class="gallery-scroll" id="gallery" tabindex="0" aria-label="Fotogalerie" aria-live="polite">
           <!--
             Die Bilddateien werden relativ zu index.html aus dem Ordner
             "images/gallery/" geladen. Die Dateinamen sind in script.js hinterlegt.
@@ -99,8 +102,8 @@
       <div class="upload-note">
         <span class="mini-icon">+</span>
         <div>
-          <strong>Deine 14 Archivkarten sind für die Galerie vorbereitet.</strong>
-          <p>Die zehn neuen Originalaufnahmen und „Blick aus dem Zug“ sind direkt in der Galerie hinterlegt und werden ohne Größenänderung oder Neukompression geladen.</p>
+          <strong>14 Archivkarten sind direkt in der Galerie verfügbar.</strong>
+          <p>Die Reihenfolge bleibt bei „Neueste zuerst“ bewusst festgelegt. Über die Sortierung kannst du jederzeit zur umgekehrten Reihenfolge wechseln.</p>
         </div>
       </div>
     </section>

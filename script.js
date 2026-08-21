@@ -62,7 +62,7 @@
       featuredOrder: 2,
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Regionalbahn im Nordschwarzwald",
-      sortOrder: 9,
+      sortOrder: 2,
       description: "Ein moderner Regionaltriebzug auf der Strecke durch den Nordschwarzwald."
     },
     {
@@ -73,7 +73,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · CALW",
       title: "Im tiefen Calwer ZOB",
-      sortOrder: 8,
+      sortOrder: 9,
       description: "Ein weißer Mercedes-Benz-Bus im geschützten Bereich des Calwer ZOB."
     },
     {
@@ -84,7 +84,7 @@
       sortDate: "2026-08-20",
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Neue Eisenbahn im Hang",
-      sortOrder: 7,
+      sortOrder: 8,
       description: "Der neue Regionaltriebzug folgt der Strecke am bewaldeten Hang entlang."
     },
     {
@@ -95,7 +95,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · NORDSCHWARZWALD",
       title: "Schnappschuss vom Zug",
-      sortOrder: 6,
+      sortOrder: 7,
       description: "Ein farbenfroher Regionalbus im Vorbeifahren."
     },
     {
@@ -106,7 +106,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Am Bahnsteig entlang",
-      sortOrder: 5,
+      sortOrder: 6,
       description: "Ein S-Bahn-Zug zieht sich entlang des Bahnsteigs in die Tiefe des Motivs."
     },
     {
@@ -117,7 +117,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Nah dran",
-      sortOrder: 4,
+      sortOrder: 5,
       description: "Eine nahe Perspektive auf die Front des S-Bahn-Triebzugs."
     },
     {
@@ -128,7 +128,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Zwischen zwei Triebzügen",
-      sortOrder: 3,
+      sortOrder: 4,
       description: "Ein ungewöhnlicher Blick genau in den schmalen Raum zwischen zwei Fahrzeugen."
     },
     {
@@ -139,7 +139,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Kupplung im Detail",
-      sortOrder: 2,
+      sortOrder: 3,
       description: "Die beiden Fahrzeugenden und ihre Kupplungen aus unmittelbarer Nähe."
     },
     {
@@ -192,6 +192,7 @@
 
   const gallery = $("#gallery");
   const sortSelect = $("#sortSelect");
+  const galleryCount = $("#galleryCount");
   let activeFilter = "all";
   let sortMode = "newest";
   let visiblePhotos = [];
@@ -243,9 +244,19 @@
     return `images/gallery/${photo.file}`;
   }
 
+  function updateGalleryCount() {
+    if (!galleryCount) return;
+    const total = visiblePhotos.length;
+    galleryCount.textContent =
+      activeFilter === "all"
+        ? `${total} ${total === 1 ? "Foto" : "Fotos"}`
+        : `${total} von ${photos.length} Fotos`;
+  }
+
   function renderGallery() {
     visiblePhotos = filteredPhotos();
     gallery.innerHTML = "";
+    updateGalleryCount();
 
     if (!visiblePhotos.length) {
       gallery.innerHTML = `<div class="gallery-empty">Keine Bilder in dieser Kategorie.</div>`;
@@ -255,6 +266,9 @@
     visiblePhotos.forEach((photo, index) => {
       const card = document.createElement("article");
       card.className = "photo-card";
+      if (photo.title === "Tageslicht an der Stadtbahn") {
+        card.classList.add("card-tageslicht");
+      }
       card.dataset.category = photo.category;
       card.dataset.index = String(index);
       card.tabIndex = 0;
@@ -269,7 +283,7 @@
 
       const img = document.createElement("img");
       img.className = "photo-image";
-      img.loading = index < 3 ? "eager" : "lazy";
+      img.loading = index < 6 ? "eager" : "lazy";
       img.decoding = "async";
       img.src = imagePath(photo);
       img.alt = photo.title;
@@ -359,6 +373,8 @@
     });
   });
 
+  sortSelect.value = sortMode;
+
   sortSelect.addEventListener("change", () => {
     sortMode = sortSelect.value;
 
@@ -366,21 +382,35 @@
     gallery.scrollTop = 0;
   });
 
-  // Desktop: Mausrad bewegt die Galerie vertikal.
+  // Desktop: Das Mausrad steuert die Galerie nur solange sie in die
+  // gewünschte Richtung noch weiter scrollen kann. Am oberen/unteren Ende
+  // übernimmt wieder die normale Seitenscrollung.
   gallery.addEventListener(
     "wheel",
     (event) => {
       if (
-        window.innerWidth > 900 &&
-        Math.abs(event.deltaY) > Math.abs(event.deltaX)
+        window.innerWidth <= 900 ||
+        Math.abs(event.deltaY) <= Math.abs(event.deltaX)
       ) {
-        event.preventDefault();
-
-        gallery.scrollBy({
-          top: event.deltaY * 1.15,
-          behavior: "auto"
-        });
+        return;
       }
+
+      const atTop = gallery.scrollTop <= 0;
+      const atBottom =
+        gallery.scrollTop + gallery.clientHeight >=
+        gallery.scrollHeight - 1;
+
+      const wantsDown = event.deltaY > 0;
+      const canScroll =
+        (wantsDown && !atBottom) || (!wantsDown && !atTop);
+
+      if (!canScroll) return;
+
+      event.preventDefault();
+      gallery.scrollBy({
+        top: event.deltaY * 1.15,
+        behavior: "auto"
+      });
     },
     { passive: false }
   );
@@ -429,6 +459,26 @@
 
     lightboxCounter.textContent =
       `${currentLightboxIndex + 1} / ${visiblePhotos.length}`;
+
+    // Das nächste und vorherige Bild werden vorsichtig vorgeladen,
+    // damit die Navigation in der Großansicht möglichst direkt reagiert.
+    if (visiblePhotos.length > 1) {
+      const nextIndex =
+        (currentLightboxIndex + 1) % visiblePhotos.length;
+      const prevIndex =
+        (currentLightboxIndex - 1 + visiblePhotos.length) %
+        visiblePhotos.length;
+
+      [nextIndex, prevIndex].forEach(index => {
+        const preload = new Image();
+        preload.src = imagePath(visiblePhotos[index]);
+      });
+    }
+
+    const dialog = document.querySelector(".lightbox-dialog");
+    if (dialog && window.innerWidth <= 600) {
+      dialog.scrollTop = 0;
+    }
   }
 
   function nextPhoto() {
