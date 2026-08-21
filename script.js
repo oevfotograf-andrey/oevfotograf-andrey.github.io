@@ -46,6 +46,7 @@
       category: "bus",
       location: "Stuttgart",
       sortDate: "2026-08-20",
+      featuredOrder: 4,
       kicker: "BUS · STUTTGART",
       title: "Letzte Fahrt in der Innenstadt",
       description: "Ein roter Gelenkbus unterwegs im Stuttgarter Innenstadtverkehr."
@@ -56,6 +57,7 @@
       category: "regional",
       location: "Nordschwarzwald",
       sortDate: "2026-08-20",
+      featuredOrder: 2,
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Regionalbahn im Nordschwarzwald",
       description: "Ein moderner Regionaltriebzug auf der Strecke durch den Nordschwarzwald."
@@ -136,6 +138,7 @@
       category: "sbahn",
       location: "Stuttgart",
       sortDate: "2026-08-20",
+      featuredOrder: 1,
       kicker: "S-BAHN · INTERIEUR",
       title: "Blick aus dem Zug",
       description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
@@ -145,7 +148,8 @@
       file: "IMG_2288.JPG",
       category: "regional",
       location: "Calw",
-      date: "2026-08-17",
+      sortDate: "2026-08-20",
+      featuredOrder: 3,
       kicker: "REGIONAL · CALW",
       title: "Warten an der Endstation",
       description: "Ein ruhiger Moment an der Endstation in Calw."
@@ -186,9 +190,37 @@
 
   function sortedPhotos(list) {
     return [...list].sort((a, b) => {
+      // Für die Standardsortierung "Neueste zuerst" gibt es vier
+      // bewusst festgelegte Positionen. So bleiben die gewünschten
+      // Fotokarten unabhängig von ihrer Dateinummer an ihrem Platz:
+      // 1. Blick aus dem Zug
+      // 2. Regionalbahn im Nordschwarzwald
+      // 3. Warten an der Endstation
+      // 4. Letzte Fahrt in der Innenstadt
+      if (sortMode === "newest") {
+        const aFeatured =
+          Number.isFinite(a.featuredOrder)
+            ? a.featuredOrder
+            : Number.POSITIVE_INFINITY;
+
+        const bFeatured =
+          Number.isFinite(b.featuredOrder)
+            ? b.featuredOrder
+            : Number.POSITIVE_INFINITY;
+
+        if (aFeatured !== bFeatured) {
+          return aFeatured - bFeatured;
+        }
+      }
+
       const diff = dateValue(a) - dateValue(b);
-      if (diff !== 0) return sortMode === "newest" ? -diff : diff;
-      return sortMode === "newest" ? b.id - a.id : a.id - b.id;
+      if (diff !== 0) {
+        return sortMode === "newest" ? -diff : diff;
+      }
+
+      return sortMode === "newest"
+        ? b.id - a.id
+        : a.id - b.id;
     });
   }
 
