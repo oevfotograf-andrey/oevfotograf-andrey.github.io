@@ -115,7 +115,7 @@
       </div>
 
       <div id="dropzone" class="dropzone" tabindex="0">
-        <input id="photoInput" type="file" accept="image/jpeg,image/jpg,image/tiff">
+        <input id="photoInput" type="file" accept="image/jpeg,image/jpg">
         <div class="upload-symbol">↥</div>
         <h3>Foto hierher ziehen</h3>
         <p>oder <label for="photoInput">Datei auswählen</label></p>
@@ -158,7 +158,16 @@
             </div>
             <button id="mapButton" class="button primary" type="button" disabled>Auf Karte zeigen</button>
           </div>
-          <p class="privacy-note">Die Datei wird für diese Funktion nicht auf den Server hochgeladen. Die EXIF-Auswertung läuft lokal in deinem Browser. Für die Straßenbezeichnung wird nur die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
+
+          <div class="favorite-actions">
+            <div>
+              <span class="eyebrow">FAVORITEN AUF DIESEM GERÄT</span>
+              <p id="favoriteHint">Analysiere ein Foto, um es lokal auf diesem Gerät zu speichern.</p>
+            </div>
+            <button id="favoriteButton" class="button ghost" type="button" disabled>☆ Zu Favoriten speichern</button>
+          </div>
+
+          <p class="privacy-note">Die Datei wird für diese Funktion nicht auf den Server hochgeladen. EXIF-Daten und Favoriten bleiben lokal in deinem Browser. Nur wenn GPS vorhanden ist, wird für die Straßenbezeichnung die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
         </div>
       </div>
     </section>
@@ -174,25 +183,28 @@
 
       <div class="location-feature">
         <div class="map-copy">
-          <span class="map-number">01</span>
-          <h3>Ort + Blickrichtung</h3>
+          <span class="map-number">01 / FAVORITEN</span>
+          <h3>Gespeicherte Orte</h3>
           <p>
-            Wenn dein Foto GPS und eine Kompassrichtung enthält, kann die Seite
-            neben den Koordinaten auch die Blickrichtung ausgeben – zum Beispiel
-            „Nordost“. Fehlt die Richtungsinformation in der Datei, wird sie nicht erfunden.
+            Nach der EXIF-Analyse kannst du ein Foto als Favorit auf diesem Gerät speichern.
+            Fotos mit GPS erscheinen hier mit ihrem tatsächlichen Aufnahmeort. Die Originaldatei
+            und die Metadaten bleiben lokal im Browser.
           </p>
-          <div class="direction-demo">
-            <span>N</span><span>NO</span><span>O</span><span>SO</span>
-            <span>S</span><span>SW</span><span>W</span><span>NW</span>
+          <div id="favoriteLocations" class="favorite-location-list">
+            <p class="favorite-empty">Noch keine Fotos mit GPS in den lokalen Favoriten gespeichert.</p>
           </div>
         </div>
-        <div class="map-preview">
-          <div class="fake-map">
-            <div class="map-road r1"></div>
-            <div class="map-road r2"></div>
-            <div class="map-road r3"></div>
-            <div class="map-pin">●</div>
-            <div class="map-label">Aufnahmeort</div>
+
+        <div class="map-preview location-map-panel">
+          <div id="locationMapEmpty" class="location-map-empty">
+            <span class="map-pin">●</span>
+            <strong>Wähle oder speichere ein Foto mit GPS</strong>
+            <p>Dann erscheint der echte Aufnahmeort hier auf der Karte.</p>
+          </div>
+          <iframe id="locationMapFrame" class="location-map-frame hidden" title="Aufnahmeorte aus lokalen Favoriten" loading="lazy"></iframe>
+          <div id="locationMapCaption" class="location-map-caption hidden">
+            <strong id="locationMapTitle">—</strong>
+            <span id="locationMapMeta">—</span>
           </div>
         </div>
       </div>

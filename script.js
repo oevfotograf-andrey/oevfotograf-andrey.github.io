@@ -513,8 +513,18 @@
   const result = $("#exifResult");
   const preview = $("#previewImage");
   const mapButton = $("#mapButton");
+  const favoriteButton = $("#favoriteButton");
+  const favoriteHint = $("#favoriteHint");
 
   let currentGps = null;
+  let currentAnalyzedFile = null;
+  let currentFavoriteId = null;
+  let currentLocationName = "";
+  let previewObjectUrl = null;
+
+  const FAVORITES_DB = "fotografie-stuttgart-favorites";
+  const FAVORITES_STORE = "photos";
+  const FAVORITES_VERSION = 1;
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -1065,12 +1075,275 @@
     );
   }
 
+
+  // -----------------------------
+  // Lokale Favoriten / IndexedDB
+  // -----------------------------
+  function favoriteIdFor(file) {
+    return [file.name, file.size, file.lastModified].join("__");
+  }
+
+  function openFavoritesDb() {
+    return new Promise((resolve, reject) => {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB nicht verfügbar"));
+        return;
+      }
+
+      const request = indexedDB.open(FAVORITES_DB, FAVORITES_VERSION);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(FAVORITES_STORE)) {
+          db.createObjectStore(FAVORITES_STORE, { keyPath: "id" });
+        }
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function favoriteDbGet(id) {
+    const db = await openFavoritesDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FAVORITES_STORE, "readonly");
+      const request = tx.objectStore(FAVORITES_STORE).get(id);
+      request.onsuccess = () => { resolve(request.result || null); db.close(); };
+      request.onerror = () => { reject(request.error); db.close(); };
+    });
+  }
+
+  async function favoriteDbGetAll() {
+    const db = await openFavoritesDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FAVORITES_STORE, "readonly");
+      const request = tx.objectStore(FAVORITES_STORE).getAll();
+      request.onsuccess = () => { resolve(request.result || []); db.close(); };
+      request.onerror = () => { reject(request.error); db.close(); };
+    });
+  }
+
+  async function favoriteDbPut(record) {
+    const db = await openFavoritesDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FAVORITES_STORE, "readwrite");
+      tx.objectStore(FAVORITES_STORE).put(record);
+      tx.oncomplete = () => { resolve(); db.close(); };
+      tx.onerror = () => { reject(tx.error); db.close(); };
+    });
+  }
+
+  async function favoriteDbDelete(id) {
+    const db = await openFavoritesDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FAVORITES_STORE, "readwrite");
+      tx.objectStore(FAVORITES_STORE).delete(id);
+      tx.oncomplete = () => { resolve(); db.close(); };
+      tx.onerror = () => { reject(tx.error); db.close(); };
+    });
+  }
+
+  function updateFavoriteButton(saved) {
+    if (!favoriteButton) return;
+    favoriteButton.disabled = !currentAnalyzedFile;
+    favoriteButton.textContent = saved
+      ? "✓ In Favoriten gespeichert"
+      : "☆ Zu Favoriten speichern";
+
+    if (favoriteHint) {
+      favoriteHint.textContent = !currentAnalyzedFile
+        ? "Analysiere ein Foto, um es lokal auf diesem Gerät zu speichern."
+        : saved
+          ? "Dieses Foto ist lokal auf diesem Gerät gespeichert."
+          : currentGps
+            ? "Das Foto kann lokal gespeichert und mit seinem GPS-Ort unter „Aufnahmeorte“ angezeigt werden."
+            : "Das Foto kann lokal gespeichert werden. Ohne GPS erscheint es nicht auf der Karte.";
+    }
+  }
+
+  function favoriteAddressText(item) {
+    if (item.locationName) return item.locationName;
+    if (item.gps) return `${Number(item.gps.lat).toFixed(6)}, ${Number(item.gps.lon).toFixed(6)}`;
+    return "Kein GPS gespeichert";
+  }
+
+  function favoriteDirectionText(item) {
+    const bearing = Number(item.gps && item.gps.bearing);
+    return Number.isFinite(bearing)
+      ? `${directionName(bearing)} · ${formatNumber(bearing, 0)}°`
+      : "Blickrichtung nicht vorhanden";
+  }
+
+  function setLocationMap(item) {
+    const frame = $("#locationMapFrame");
+    const empty = $("#locationMapEmpty");
+    const caption = $("#locationMapCaption");
+    if (!frame || !empty || !caption) return;
+
+    if (!item || !item.gps) {
+      frame.classList.add("hidden");
+      frame.removeAttribute("src");
+      empty.classList.remove("hidden");
+      caption.classList.add("hidden");
+      return;
+    }
+
+    frame.src = buildMapUrl(Number(item.gps.lat), Number(item.gps.lon));
+    empty.classList.add("hidden");
+    frame.classList.remove("hidden");
+    caption.classList.remove("hidden");
+    $("#locationMapTitle").textContent = item.fileName;
+    $("#locationMapMeta").textContent = `${favoriteAddressText(item)} · ${favoriteDirectionText(item)}`;
+  }
+
+  async function renderFavoriteLocations(selectedId = null) {
+    const container = $("#favoriteLocations");
+    if (!container) return;
+
+    let items = [];
+    try {
+      items = await favoriteDbGetAll();
+    } catch (error) {
+      console.warn("Favoriten konnten nicht geladen werden", error);
+      container.innerHTML = '<p class="favorite-empty">Lokaler Favoritenspeicher ist in diesem Browser nicht verfügbar.</p>';
+      setLocationMap(null);
+      return;
+    }
+
+    items = items.filter((item) =>
+      item.gps &&
+      Number.isFinite(Number(item.gps.lat)) &&
+      Number.isFinite(Number(item.gps.lon))
+    ).sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+
+    container.innerHTML = "";
+
+    if (!items.length) {
+      container.innerHTML = '<p class="favorite-empty">Noch keine Fotos mit GPS in den lokalen Favoriten gespeichert.</p>';
+      setLocationMap(null);
+      return;
+    }
+
+    const selected = items.find((item) => item.id === selectedId) || items[0];
+
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "favorite-location-card" + (item.id === selected.id ? " active" : "");
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+
+      const image = document.createElement("img");
+      image.alt = "";
+      image.loading = "lazy";
+      if (item.imageBlob) {
+        const url = URL.createObjectURL(item.imageBlob);
+        image.src = url;
+        image.addEventListener("load", () => setTimeout(() => URL.revokeObjectURL(url), 0), { once: true });
+      }
+
+      const info = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = item.fileName;
+      const meta = document.createElement("span");
+      meta.textContent = favoriteAddressText(item);
+      info.append(title, meta);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "favorite-remove";
+      remove.setAttribute("aria-label", `${item.fileName} aus Favoriten entfernen`);
+      remove.textContent = "×";
+
+      const choose = () => {
+        setLocationMap(item);
+        container.querySelectorAll(".favorite-location-card").forEach((card) => card.classList.remove("active"));
+        row.classList.add("active");
+      };
+
+      row.addEventListener("click", choose);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          choose();
+        }
+      });
+
+      remove.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        try {
+          await favoriteDbDelete(item.id);
+          if (currentFavoriteId === item.id) {
+            currentFavoriteId = null;
+            updateFavoriteButton(false);
+          }
+          await renderFavoriteLocations(null);
+        } catch (error) {
+          console.error(error);
+          alert("Der Favorit konnte nicht entfernt werden.");
+        }
+      });
+
+      row.append(image, info, remove);
+      container.appendChild(row);
+    });
+
+    setLocationMap(selected);
+  }
+
+  async function saveCurrentFavorite() {
+    if (!currentAnalyzedFile) return;
+
+    const id = favoriteIdFor(currentAnalyzedFile);
+    const metadata = {
+      camera: $("#camera").textContent,
+      lens: $("#lens").textContent,
+      shutter: $("#shutter").textContent,
+      aperture: $("#aperture").textContent,
+      iso: $("#iso").textContent,
+      focal: $("#focal").textContent,
+      author: $("#author").textContent,
+      copyright: $("#copyright").textContent,
+      dateTaken: $("#dateTaken").textContent,
+      direction: $("#direction").textContent
+    };
+
+    const record = {
+      id,
+      fileName: currentAnalyzedFile.name,
+      imageBlob: currentAnalyzedFile,
+      mime: currentAnalyzedFile.type,
+      savedAt: Date.now(),
+      metadata,
+      locationName: currentLocationName || "",
+      gps: currentGps ? {
+        lat: Number(currentGps.lat),
+        lon: Number(currentGps.lon),
+        bearing: Number.isFinite(Number(currentGps.bearing)) ? Number(currentGps.bearing) : null
+      } : null
+    };
+
+    favoriteButton.disabled = true;
+    favoriteButton.textContent = "Speichern…";
+
+    try {
+      await favoriteDbPut(record);
+      currentFavoriteId = id;
+      updateFavoriteButton(true);
+      if (currentGps) await renderFavoriteLocations(id);
+    } catch (error) {
+      console.error(error);
+      updateFavoriteButton(false);
+      alert("Das Foto konnte nicht lokal gespeichert werden. Prüfe den verfügbaren Speicher des Browsers.");
+    }
+  }
+
   async function analyzeFile(file) {
     if (!file) return;
 
     if (
-      !/^image\/(jpeg|jpg|tiff)$/i.test(file.type) &&
-      !/\.(jpe?g|tiff?)$/i.test(file.name)
+      !/^image\/(jpeg|jpg)$/i.test(file.type) &&
+      !/\.jpe?g$/i.test(file.name)
     ) {
       alert(
         "Bitte möglichst ein JPEG-Foto auswählen. " +
@@ -1080,18 +1353,30 @@
       return;
     }
 
-    const objectUrl =
-      URL.createObjectURL(file);
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
 
-    preview.src = objectUrl;
+    currentAnalyzedFile = file;
+    currentFavoriteId = favoriteIdFor(file);
+    currentLocationName = "";
+    currentGps = null;
 
-    $("#previewFile").textContent =
-      file.name;
+    previewObjectUrl = URL.createObjectURL(file);
+    preview.src = previewObjectUrl;
 
+    $("#previewFile").textContent = file.name;
     result.classList.remove("hidden");
+    $("#exifStatus").textContent = "Analyse…";
 
-    $("#exifStatus").textContent =
-      "Analyse…";
+    if (favoriteButton) {
+      favoriteButton.disabled = true;
+      favoriteButton.textContent = "☆ Zu Favoriten speichern";
+    }
+
+    if (favoriteHint) {
+      favoriteHint.textContent = "Prüfe EXIF und GPS. Danach kannst du das Foto lokal auf diesem Gerät speichern.";
+    }
 
     try {
       const buffer =
@@ -1099,6 +1384,13 @@
 
       const exif =
         parseExif(buffer);
+
+      let alreadySaved = false;
+      try {
+        alreadySaved = Boolean(await favoriteDbGet(currentFavoriteId));
+      } catch (_) {
+        alreadySaved = false;
+      }
 
       setText(
         "camera",
@@ -1211,11 +1503,15 @@
             lon
           );
 
+        currentLocationName = address;
+
         $("#locationName").textContent =
           address;
 
         $("#exifStatus").textContent =
           "EXIF + GPS gefunden";
+
+        updateFavoriteButton(alreadySaved);
       } else {
         setText(
           "coordinates",
@@ -1231,12 +1527,19 @@
           Object.keys(exif).length
             ? "EXIF gefunden"
             : "Keine EXIF-Daten";
+
+        updateFavoriteButton(alreadySaved);
       }
     } catch (error) {
       console.error(error);
 
       $("#exifStatus").textContent =
         "Analysefehler";
+
+      currentAnalyzedFile = null;
+      currentFavoriteId = null;
+      currentGps = null;
+      updateFavoriteButton(false);
 
       alert(
         "Die Datei konnte nicht analysiert werden. " +
@@ -1354,6 +1657,13 @@
       });
     }
   );
+
+  if (favoriteButton) {
+    favoriteButton.addEventListener("click", saveCurrentFavorite);
+  }
+
+  renderFavoriteLocations();
+  updateFavoriteButton(false);
 
   $("#year").textContent =
     new Date().getFullYear();
