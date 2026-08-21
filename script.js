@@ -659,6 +659,44 @@
   let currentFavoriteId = null;
   let currentLocationName = "";
   let previewObjectUrl = null;
+  let analysisToken = 0;
+
+  function clearInlineMap() {
+    const existing = document.getElementById("mapFrame");
+    if (existing) existing.remove();
+  }
+
+  function setMapButtonState(button, hasGps, labels = {}) {
+    if (!button) return;
+
+    const availableLabel =
+      labels.available || "Auf Karte zeigen";
+    const unavailableLabel =
+      labels.unavailable || "Kein Ort verfügbar";
+
+    button.hidden = false;
+    button.disabled = !hasGps;
+    button.setAttribute(
+      "aria-disabled",
+      String(!hasGps)
+    );
+    button.textContent = hasGps
+      ? availableLabel
+      : unavailableLabel;
+  }
+
+  function formatExifDate(value) {
+    const raw = String(value || "").trim();
+    const match = raw.match(
+      /^(\d{4}):(\d{2}):(\d{2})(?:\s+(\d{2}:\d{2}:\d{2}))?$/
+    );
+
+    if (!match) return raw || "Nicht vorhanden";
+
+    return match[4]
+      ? `${match[3]}.${match[2]}.${match[1]} · ${match[4]}`
+      : `${match[3]}.${match[2]}.${match[1]}`;
+  }
 
   const FAVORITES_DB = "fotografie-stuttgart-favorites";
   const FAVORITES_STORE = "photos";
@@ -1167,13 +1205,23 @@
       `&zoom=18` +
       `&addressdetails=1`;
 
+    const controller =
+      typeof AbortController !== "undefined"
+        ? new AbortController()
+        : null;
+
+    const timeout = controller
+      ? setTimeout(() => controller.abort(), 8000)
+      : null;
+
     try {
       const response = await fetch(
         url,
         {
           headers: {
             "Accept": "application/json"
-          }
+          },
+          signal: controller ? controller.signal : undefined
         }
       );
 
@@ -1191,6 +1239,8 @@
       );
     } catch (_) {
       return "Straßenname konnte nicht abgerufen werden";
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
   }
 
@@ -1727,8 +1777,14 @@
       : "Dieses Foto hat keine GPS-Koordinaten.";
 
     const mapButton = $("#favoriteDetailMapButton");
-    mapButton.hidden = !selected.gps;
-    mapButton.disabled = !selected.gps;
+    setMapButtonState(
+      mapButton,
+      Boolean(selected.gps),
+      {
+        available: "Ort auf Karte ansehen",
+        unavailable: "Kein Ort verfügbar"
+      }
+    );
     mapButton.onclick = () => {
       if (!selected.gps) return;
       setLocationMap(selected);
@@ -1856,6 +1912,9 @@
   async function analyzeFile(file) {
     if (!file) return;
 
+    const currentAnalysis = ++analysisToken;
+    clearInlineMap();
+
     if (
       !/^image\/(jpeg|jpg)$/i.test(file.type) &&
       !/\.jpe?g$/i.test(file.name)
@@ -1884,10 +1943,14 @@
     result.classList.remove("hidden");
     $("#exifStatus").textContent = "Analyse…";
 
-    if (mapButton) {
-      mapButton.disabled = true;
-      mapButton.hidden = true;
-    }
+    setMapButtonState(
+      mapButton,
+      false,
+      {
+        available: "Auf Karte zeigen",
+        unavailable: "Kein Ort verfügbar"
+      }
+    );
 
     if (favoriteButton) {
       favoriteButton.disabled = true;
@@ -1904,6 +1967,8 @@
       const buffer =
         await file.arrayBuffer();
 
+      if (currentAnalysis !== analysisToken) return;
+
       const exif =
         parseExif(buffer);
 
@@ -1913,6 +1978,8 @@
       } catch (_) {
         alreadySaved = false;
       }
+
+      if (currentAnalysis !== analysisToken) return;
 
       setText(
         "camera",
@@ -1973,9 +2040,11 @@
 
       setText(
         "dateTaken",
-        exif.DateTimeOriginal ||
-        exif.CreateDate ||
-        "Nicht vorhanden"
+        formatExifDate(
+          exif.DateTimeOriginal ||
+          exif.CreateDate ||
+          ""
+        )
       );
 
       const bearing =
@@ -2017,8 +2086,14 @@
         $("#locationName").textContent =
           "Adresse wird ermittelt…";
 
-        mapButton.hidden = false;
-        mapButton.disabled = false;
+        setMapButtonState(
+          mapButton,
+          true,
+          {
+            available: "Auf Karte zeigen",
+            unavailable: "Kein Ort verfügbar"
+          }
+        );
 
         let address = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         try {
@@ -2026,6 +2101,8 @@
         } catch (error) {
           console.warn("Adresse konnte nicht ermittelt werden", error);
         }
+
+        if (currentAnalysis !== analysisToken) return;
 
         currentLocationName = address;
 
@@ -2042,10 +2119,17 @@
         );
 
         $("#locationName").textContent =
-          "Kein GPS gefunden";
+          "Kein GPS gespeichert";
 
-        mapButton.disabled = true;
-        mapButton.hidden = true;
+        clearInlineMap();
+        setMapButtonState(
+          mapButton,
+          false,
+          {
+            available: "Auf Karte zeigen",
+            unavailable: "Kein Ort verfügbar"
+          }
+        );
 
         $("#exifStatus").textContent =
           Object.keys(exif).length
@@ -2055,7 +2139,19 @@
         updateFavoriteButton(alreadySaved);
       }
     } catch (error) {
+      if (currentAnalysis !== analysisToken) return;
+
       console.error(error);
+
+      clearInlineMap();
+      setMapButtonState(
+        mapButton,
+        false,
+        {
+          available: "Auf Karte zeigen",
+          unavailable: "Kein Ort verfügbar"
+        }
+      );
 
       $("#exifStatus").textContent =
         "Analysefehler";
@@ -2134,21 +2230,14 @@
   mapButton.addEventListener(
     "click",
     () => {
-      if (!currentGps) return;
+      if (!currentGps || mapButton.disabled) return;
 
       const url = buildMapUrl(
         currentGps.lat,
         currentGps.lon
       );
 
-      const existing =
-        document.getElementById(
-          "mapFrame"
-        );
-
-      if (existing) {
-        existing.remove();
-      }
+      clearInlineMap();
 
       const frame =
         document.createElement(
@@ -2189,6 +2278,19 @@
   renderFavoriteLocations();
   renderFavoriteLibrary();
   updateFavoriteButton(false);
+
+  window.addEventListener(
+    "pagehide",
+    () => {
+      analysisToken += 1;
+      clearInlineMap();
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = null;
+      }
+    },
+    { once: true }
+  );
 
   $("#year").textContent =
     new Date().getFullYear();

@@ -652,3 +652,14 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   .favorite-detail-location{align-items:stretch;flex-direction:column}
   .favorite-detail-location .button{width:100%}
 }
+
+
+/* EXIF-Lab: disabled map actions stay visible, but cannot be mistaken for active controls. */
+.button.primary:disabled{
+  pointer-events:none;
+  filter:saturate(.35);
+  opacity:.58;
+}
+.button.primary:disabled:focus-visible{
+  outline:none;
+}
