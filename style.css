@@ -318,3 +318,239 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   .lightbox-arrow.next{right:14px}
   .lightbox-help{display:none}
 }
+
+
+/* Enlarged location area: more room for many GPS favorites and a larger map. */
+.location-feature{
+  grid-template-columns:minmax(380px,.9fr) minmax(560px,1.55fr);
+  min-height:620px;
+}
+.location-feature .map-copy{padding:46px 40px}
+.location-feature .map-preview{min-height:620px}
+.favorite-location-list{
+  max-height:455px;
+  padding-right:6px;
+}
+.favorite-location-card{
+  grid-template-columns:68px minmax(0,1fr) auto;
+  min-height:64px;
+}
+.favorite-location-card img{
+  width:68px;
+  height:56px;
+}
+.location-map-caption{
+  left:18px;
+  right:18px;
+  bottom:18px;
+  padding:14px 16px;
+}
+
+/* Complete local favorites library. The strip stays horizontally scrollable when it grows. */
+.favorites-library{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--surface);
+  padding:28px;
+}
+.favorites-library-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:20px;
+  margin-bottom:20px;
+}
+.favorites-library-head h3{
+  margin:10px 0 0;
+  font-size:34px;
+  line-height:1;
+  letter-spacing:-.04em;
+}
+.favorite-library-count{
+  flex:0 0 auto;
+  padding:10px 14px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--muted);
+  font-size:12px;
+}
+.favorite-library-strip{
+  display:flex;
+  gap:14px;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scroll-snap-type:x proximity;
+  padding:4px 2px 12px;
+  min-height:154px;
+}
+.favorite-library-strip::-webkit-scrollbar{height:8px}
+.favorite-library-strip::-webkit-scrollbar-thumb{
+  background:var(--line);
+  border-radius:999px;
+}
+.favorite-library-card{
+  flex:0 0 230px;
+  scroll-snap-align:start;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface-2);
+  color:var(--text);
+  text-align:left;
+  cursor:pointer;
+}
+.favorite-library-card:hover,
+.favorite-library-card.active{
+  border-color:var(--accent);
+  transform:translateY(-1px);
+}
+.favorite-library-card img{
+  display:block;
+  width:100%;
+  height:118px;
+  object-fit:cover;
+  border-radius:12px;
+  background:var(--bg);
+}
+.favorite-library-card strong{
+  display:block;
+  margin:10px 4px 3px;
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.favorite-library-card span{
+  display:block;
+  margin:0 4px;
+  color:var(--muted);
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.favorite-detail{
+  display:grid;
+  grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr);
+  gap:26px;
+  margin-top:22px;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:var(--surface-2);
+}
+.favorite-detail-image-wrap{
+  min-height:300px;
+  border-radius:16px;
+  overflow:hidden;
+  background:var(--bg);
+}
+.favorite-detail-image-wrap img{
+  display:block;
+  width:100%;
+  height:100%;
+  min-height:300px;
+  object-fit:cover;
+}
+.favorite-detail-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+.favorite-detail-title-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:18px;
+}
+.favorite-detail-title-row h3{
+  margin:8px 0 0;
+  font-size:25px;
+  line-height:1.05;
+  overflow-wrap:anywhere;
+}
+.favorite-detail-remove{
+  flex:0 0 auto;
+  padding:10px 13px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:11px;
+  cursor:pointer;
+}
+.favorite-detail-remove:hover{
+  color:var(--text);
+  border-color:var(--accent);
+}
+.favorite-detail-metadata{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px 18px;
+  margin:20px 0;
+}
+.favorite-detail-meta{
+  padding:9px 0;
+  border-bottom:1px solid var(--line);
+}
+.favorite-detail-meta span{
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.favorite-detail-meta strong{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.favorite-detail-location{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin-top:auto;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface);
+}
+.favorite-detail-location strong{
+  display:block;
+  margin-top:6px;
+  font-size:13px;
+  line-height:1.4;
+}
+.favorite-detail-location > div > span:last-child{
+  display:block;
+  margin-top:5px;
+  color:var(--muted);
+  font-size:11px;
+}
+.favorite-detail-location .button{white-space:nowrap}
+@media (max-width:900px){
+  .favorites-library-head{align-items:flex-start;flex-direction:column}
+  .favorite-detail{grid-template-columns:1fr}
+  .favorite-detail-image-wrap,
+  .favorite-detail-image-wrap img{min-height:260px}
+}
+@media (max-width:600px){
+  .location-feature{min-height:0}
+  .location-feature .map-copy{padding:30px}
+  .location-feature .map-preview{min-height:440px}
+  .favorite-location-list{max-height:360px}
+  .favorites-library{padding:18px}
+  .favorites-library-head h3{font-size:28px}
+  .favorite-library-card{flex-basis:190px}
+  .favorite-library-card img{height:104px}
+  .favorite-detail{padding:12px;gap:16px}
+  .favorite-detail-title-row{flex-direction:column}
+  .favorite-detail-remove{width:100%}
+  .favorite-detail-metadata{grid-template-columns:1fr}
+  .favorite-detail-location{align-items:stretch;flex-direction:column}
+  .favorite-detail-location .button{width:100%}
+}

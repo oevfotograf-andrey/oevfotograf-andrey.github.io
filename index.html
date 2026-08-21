@@ -210,10 +210,60 @@
       </div>
     </section>
 
+    <section id="favoriten" class="section favorites-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">04 / FAVORITEN</p>
+          <h2>Deine gespeicherten Fotos.</h2>
+        </div>
+        <p>Alle lokalen Favoriten auf diesem Gerät an einem Ort – unabhängig davon, ob GPS-Daten vorhanden sind.</p>
+      </div>
+
+      <div class="favorites-library">
+        <div class="favorites-library-head">
+          <div>
+            <span class="map-number">LOKALES FOTOARCHIV</span>
+            <h3>Favoriten durchsuchen</h3>
+          </div>
+          <span id="favoriteLibraryCount" class="favorite-library-count">0 Fotos</span>
+        </div>
+
+        <div id="favoriteLibrary" class="favorite-library-strip" aria-label="Gespeicherte Favoriten">
+          <p class="favorite-empty">Noch keine Fotos in den lokalen Favoriten gespeichert.</p>
+        </div>
+
+        <div id="favoriteDetail" class="favorite-detail hidden">
+          <div class="favorite-detail-image-wrap">
+            <img id="favoriteDetailImage" alt="" />
+          </div>
+          <div class="favorite-detail-copy">
+            <div class="favorite-detail-title-row">
+              <div>
+                <span class="eyebrow">AUSGEWÄHLTER FAVORIT</span>
+                <h3 id="favoriteDetailTitle">—</h3>
+              </div>
+              <button id="favoriteDetailRemove" class="favorite-detail-remove" type="button">Aus Favoriten entfernen</button>
+            </div>
+
+            <div id="favoriteDetailMetadata" class="favorite-detail-metadata"></div>
+
+            <div class="favorite-detail-location">
+              <div>
+                <span class="eyebrow">AUFNAHMEORT</span>
+                <strong id="favoriteDetailLocation">Kein GPS gespeichert</strong>
+                <span id="favoriteDetailCoordinates">—</span>
+              </div>
+              <button id="favoriteDetailMapButton" class="button primary" type="button" disabled>Ort auf Karte ansehen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="blog" class="section">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">04 / BLOG</p>
+          <p class="eyebrow">05 / BLOG</p>
           <h2>Notizen vom Bahnsteig.</h2>
         </div>
         <p>Persönliche Geschichten, Fahrzeugporträts, Fototipps und Beobachtungen aus dem ÖPNV-Alltag.</p>
@@ -243,7 +293,7 @@
 
     <section class="idea-section">
       <div>
-        <p class="eyebrow">05 / MEINE IDEE</p>
+        <p class="eyebrow">06 / MEINE IDEE</p>
         <h2>Das ÖPNV-Fototagebuch.</h2>
       </div>
       <p>

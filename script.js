@@ -1259,6 +1259,7 @@
         setLocationMap(item);
         container.querySelectorAll(".favorite-location-card").forEach((card) => card.classList.remove("active"));
         row.classList.add("active");
+        renderFavoriteLibrary(item.id);
       };
 
       row.addEventListener("click", choose);
@@ -1277,7 +1278,10 @@
             currentFavoriteId = null;
             updateFavoriteButton(false);
           }
-          await renderFavoriteLocations(null);
+          await Promise.all([
+            renderFavoriteLocations(null),
+            renderFavoriteLibrary(null)
+          ]);
         } catch (error) {
           console.error(error);
           alert("Der Favorit konnte nicht entfernt werden.");
@@ -1289,6 +1293,160 @@
     });
 
     setLocationMap(selected);
+  }
+
+  const FAVORITE_METADATA_LABELS = [
+    ["camera", "KAMERA"],
+    ["lens", "OBJEKTIV"],
+    ["shutter", "BELICHTUNGSZEIT"],
+    ["aperture", "BLENDE"],
+    ["iso", "ISO"],
+    ["focal", "BRENNWEITE"],
+    ["author", "AUTOR"],
+    ["copyright", "COPYRIGHT"],
+    ["dateTaken", "AUFNAHMEDATUM"],
+    ["direction", "BLICKRICHTUNG"]
+  ];
+
+  function favoriteObjectUrl(blob, image) {
+    if (!blob || !image) return;
+    const url = URL.createObjectURL(blob);
+    image.src = url;
+    image.addEventListener(
+      "load",
+      () => setTimeout(() => URL.revokeObjectURL(url), 0),
+      { once: true }
+    );
+  }
+
+  function favoriteDateText(item) {
+    const value = Number(item.savedAt || 0);
+    if (!value) return "Lokal gespeichert";
+    try {
+      return new Intl.DateTimeFormat("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }).format(new Date(value));
+    } catch (_) {
+      return "Lokal gespeichert";
+    }
+  }
+
+  async function renderFavoriteLibrary(selectedId = null) {
+    const strip = $("#favoriteLibrary");
+    const count = $("#favoriteLibraryCount");
+    const detail = $("#favoriteDetail");
+    if (!strip || !count || !detail) return;
+
+    let items = [];
+    try {
+      items = await favoriteDbGetAll();
+    } catch (error) {
+      console.warn("Favoriten konnten nicht geladen werden", error);
+      strip.innerHTML = '<p class="favorite-empty">Lokaler Favoritenspeicher ist in diesem Browser nicht verfügbar.</p>';
+      count.textContent = "0 Fotos";
+      detail.classList.add("hidden");
+      return;
+    }
+
+    items = items.sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+    count.textContent = `${items.length} ${items.length === 1 ? "Foto" : "Fotos"}`;
+    strip.innerHTML = "";
+
+    if (!items.length) {
+      strip.innerHTML = '<p class="favorite-empty">Noch keine Fotos in den lokalen Favoriten gespeichert.</p>';
+      detail.classList.add("hidden");
+      return;
+    }
+
+    const selected = items.find((item) => item.id === selectedId) || items[0];
+
+    items.forEach((item) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "favorite-library-card" + (item.id === selected.id ? " active" : "");
+      card.setAttribute("aria-label", `${item.fileName} öffnen`);
+
+      const image = document.createElement("img");
+      image.alt = "";
+      image.loading = "lazy";
+      favoriteObjectUrl(item.imageBlob, image);
+
+      const title = document.createElement("strong");
+      title.textContent = item.fileName;
+
+      const meta = document.createElement("span");
+      meta.textContent = item.gps
+        ? favoriteAddressText(item)
+        : `Ohne GPS · ${favoriteDateText(item)}`;
+
+      card.append(image, title, meta);
+      card.addEventListener("click", () => {
+        renderFavoriteLibrary(item.id);
+        if (item.gps) {
+          renderFavoriteLocations(item.id);
+        }
+      });
+      strip.appendChild(card);
+    });
+
+    detail.classList.remove("hidden");
+    $("#favoriteDetailTitle").textContent = selected.fileName;
+    const detailImage = $("#favoriteDetailImage");
+    detailImage.alt = selected.fileName;
+    detailImage.removeAttribute("src");
+    favoriteObjectUrl(selected.imageBlob, detailImage);
+
+    const metadataContainer = $("#favoriteDetailMetadata");
+    metadataContainer.innerHTML = "";
+    FAVORITE_METADATA_LABELS.forEach(([key, label]) => {
+      const row = document.createElement("div");
+      row.className = "favorite-detail-meta";
+      const name = document.createElement("span");
+      name.textContent = label;
+      const value = document.createElement("strong");
+      value.textContent = (selected.metadata && selected.metadata[key]) || "Nicht vorhanden";
+      row.append(name, value);
+      metadataContainer.appendChild(row);
+    });
+
+    $("#favoriteDetailLocation").textContent = selected.gps
+      ? favoriteAddressText(selected)
+      : "Kein GPS gespeichert";
+    $("#favoriteDetailCoordinates").textContent = selected.gps
+      ? `${favoriteCoordinatesText(selected)} · ${favoriteDirectionText(selected)}`
+      : "Dieses Foto hat keine GPS-Koordinaten.";
+
+    const mapButton = $("#favoriteDetailMapButton");
+    mapButton.disabled = !selected.gps;
+    mapButton.onclick = () => {
+      if (!selected.gps) return;
+      setLocationMap(selected);
+      renderFavoriteLocations(selected.id);
+      const locationSection = $("#orte");
+      if (locationSection) {
+        locationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
+    const removeButton = $("#favoriteDetailRemove");
+    removeButton.onclick = async () => {
+      try {
+        await favoriteDbDelete(selected.id);
+        if (currentFavoriteId === selected.id) {
+          currentFavoriteId = null;
+          updateFavoriteButton(false);
+        }
+        await Promise.all([
+          renderFavoriteLibrary(null),
+          renderFavoriteLocations(null)
+        ]);
+      } catch (error) {
+        console.error(error);
+        alert("Der Favorit konnte nicht entfernt werden.");
+      }
+    };
   }
 
   async function saveCurrentFavorite() {
@@ -1330,7 +1488,10 @@
       await favoriteDbPut(record);
       currentFavoriteId = id;
       updateFavoriteButton(true);
-      if (currentGps) await renderFavoriteLocations(id);
+      await Promise.all([
+        renderFavoriteLibrary(id),
+        currentGps ? renderFavoriteLocations(id) : renderFavoriteLocations(null)
+      ]);
     } catch (error) {
       console.error(error);
       updateFavoriteButton(false);
@@ -1663,6 +1824,7 @@
   }
 
   renderFavoriteLocations();
+  renderFavoriteLibrary();
   updateFavoriteButton(false);
 
   $("#year").textContent =
