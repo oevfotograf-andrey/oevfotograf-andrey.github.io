@@ -87,15 +87,15 @@
       </div>
 
       <div class="gallery-shell">
-        <div class="gallery-scroll" id="gallery" tabindex="0" aria-label="Fotogalerie" aria-live="polite">
+        <div class="gallery-scroll" id="gallery" tabindex="0" aria-label="Fotogalerie" aria-describedby="galleryHint" aria-live="polite">
           <!--
             Die Bilddateien werden relativ zu index.html aus dem Ordner
             "images/gallery/" geladen. Die Dateinamen sind in script.js hinterlegt.
           -->
         </div>
-        <div class="gallery-scroll-hint" aria-hidden="true">
-          <span>Desktop: Mausrad</span>
-          <span>Smartphone: Wischen</span>
+        <div class="gallery-scroll-hint" id="galleryHint">
+          <span class="gallery-hint-desktop">Desktop: mit dem Mausrad durch die Galerie</span>
+          <span class="gallery-hint-mobile">Smartphone: im Galerieblock vertikal wischen · Foto antippen für die Großansicht</span>
         </div>
       </div>
 

@@ -257,6 +257,21 @@
         : `${total} von ${photos.length} Fotos`;
   }
 
+  function updateGalleryScrollState() {
+    if (!gallery) return;
+
+    const scrollable = gallery.scrollHeight > gallery.clientHeight + 2;
+    const atTop = gallery.scrollTop <= 1;
+    const atBottom =
+      gallery.scrollTop + gallery.clientHeight >=
+      gallery.scrollHeight - 2;
+
+    gallery.classList.toggle("is-scrollable", scrollable);
+    gallery.classList.toggle("at-top", atTop);
+    gallery.classList.toggle("at-bottom", atBottom);
+  }
+
+
   function renderGallery() {
     visiblePhotos = filteredPhotos();
     gallery.innerHTML = "";
@@ -353,6 +368,8 @@
 
       gallery.appendChild(card);
     });
+
+    requestAnimationFrame(updateGalleryScrollState);
   }
 
   function categoryName(category) {
@@ -374,6 +391,7 @@
 
       renderGallery();
       gallery.scrollTop = 0;
+      requestAnimationFrame(updateGalleryScrollState);
     });
   });
 
@@ -384,7 +402,11 @@
 
     renderGallery();
     gallery.scrollTop = 0;
+    requestAnimationFrame(updateGalleryScrollState);
   });
+
+  gallery.addEventListener("scroll", updateGalleryScrollState, { passive: true });
+  window.addEventListener("resize", updateGalleryScrollState);
 
   // Desktop: Das Mausrad steuert die Galerie nur solange sie in die
   // gewünschte Richtung noch weiter scrollen kann. Am oberen/unteren Ende
@@ -528,14 +550,19 @@
 
   let touchStartX = 0;
   let touchStartY = 0;
+  let lightboxSwipeAllowed = false;
 
   lightbox.addEventListener(
     "touchstart",
     (event) => {
       const touch = event.changedTouches[0];
+      const target = event.target;
 
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
+      lightboxSwipeAllowed = !target.closest(
+        ".lightbox-close, .lightbox-arrow"
+      );
     },
     { passive: true }
   );
@@ -549,11 +576,14 @@
       const dy = touch.clientY - touchStartY;
 
       if (
-        Math.abs(dx) > 55 &&
-        Math.abs(dx) > Math.abs(dy)
+        lightboxSwipeAllowed &&
+        Math.abs(dx) > 62 &&
+        Math.abs(dx) > Math.abs(dy) * 1.35
       ) {
         dx < 0 ? nextPhoto() : previousPhoto();
       }
+
+      lightboxSwipeAllowed = false;
     },
     { passive: true }
   );
