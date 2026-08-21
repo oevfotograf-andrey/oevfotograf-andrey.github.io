@@ -38,6 +38,7 @@
       sortDate: "2026-08-20",
       kicker: "TRAM · STUTTGART",
       title: "Linien treffen sich",
+      sortOrder: 13,
       description: "Zwei Stuttgarter Stadtbahnen treffen sich an einer Kreuzung im Stadtverkehr."
     },
     {
@@ -49,6 +50,7 @@
       featuredOrder: 4,
       kicker: "BUS · STUTTGART",
       title: "Letzte Fahrt in der Innenstadt",
+      sortOrder: 11,
       description: "Ein roter Gelenkbus unterwegs im Stuttgarter Innenstadtverkehr."
     },
     {
@@ -60,6 +62,7 @@
       featuredOrder: 2,
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Regionalbahn im Nordschwarzwald",
+      sortOrder: 9,
       description: "Ein moderner Regionaltriebzug auf der Strecke durch den Nordschwarzwald."
     },
     {
@@ -70,6 +73,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · CALW",
       title: "Im tiefen Calwer ZOB",
+      sortOrder: 8,
       description: "Ein weißer Mercedes-Benz-Bus im geschützten Bereich des Calwer ZOB."
     },
     {
@@ -80,6 +84,7 @@
       sortDate: "2026-08-20",
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Neue Eisenbahn im Hang",
+      sortOrder: 7,
       description: "Der neue Regionaltriebzug folgt der Strecke am bewaldeten Hang entlang."
     },
     {
@@ -90,6 +95,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · NORDSCHWARZWALD",
       title: "Schnappschuss vom Zug",
+      sortOrder: 6,
       description: "Ein farbenfroher Regionalbus im Vorbeifahren."
     },
     {
@@ -100,6 +106,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Am Bahnsteig entlang",
+      sortOrder: 5,
       description: "Ein S-Bahn-Zug zieht sich entlang des Bahnsteigs in die Tiefe des Motivs."
     },
     {
@@ -110,6 +117,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Nah dran",
+      sortOrder: 4,
       description: "Eine nahe Perspektive auf die Front des S-Bahn-Triebzugs."
     },
     {
@@ -120,6 +128,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Zwischen zwei Triebzügen",
+      sortOrder: 3,
       description: "Ein ungewöhnlicher Blick genau in den schmalen Raum zwischen zwei Fahrzeugen."
     },
     {
@@ -130,6 +139,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Kupplung im Detail",
+      sortOrder: 2,
       description: "Die beiden Fahrzeugenden und ihre Kupplungen aus unmittelbarer Nähe."
     },
     {
@@ -141,6 +151,7 @@
       featuredOrder: 1,
       kicker: "S-BAHN · INTERIEUR",
       title: "Blick aus dem Zug",
+      sortOrder: 1,
       description: "Die gleiche ungewöhnliche Perspektive aus dem Inneren des Fahrzeugs."
     },
     {
@@ -152,6 +163,7 @@
       featuredOrder: 3,
       kicker: "REGIONAL · CALW",
       title: "Warten an der Endstation",
+      sortOrder: 10,
       description: "Ein ruhiger Moment an der Endstation in Calw."
     },
     {
@@ -162,6 +174,7 @@
       date: "2026-08-14",
       kicker: "S-BAHN · STUTTGART",
       title: "Im Sonnenuntergang",
+      sortOrder: 12,
       description: "Ein ÖPNV-Moment im warmen Licht des Sonnenuntergangs."
     },
     {
@@ -172,6 +185,7 @@
       date: "2026-08-12",
       kicker: "TRAM · STUTTGART",
       title: "Tageslicht an der Stadtbahn",
+      sortOrder: 14,
       description: "Eine Stadtbahnaufnahme bei klarem Tageslicht."
     }
   ];
@@ -190,27 +204,21 @@
 
   function sortedPhotos(list) {
     return [...list].sort((a, b) => {
-      // Für die Standardsortierung "Neueste zuerst" gibt es vier
-      // bewusst festgelegte Positionen. So bleiben die gewünschten
-      // Fotokarten unabhängig von ihrer Dateinummer an ihrem Platz:
-      // 1. Blick aus dem Zug
-      // 2. Regionalbahn im Nordschwarzwald
-      // 3. Warten an der Endstation
-      // 4. Letzte Fahrt in der Innenstadt
-      if (sortMode === "newest") {
-        const aFeatured =
-          Number.isFinite(a.featuredOrder)
-            ? a.featuredOrder
-            : Number.POSITIVE_INFINITY;
+      // Feste Standardreihenfolge für „Neueste zuerst“.
+      // Diese Reihenfolge entspricht bewusst der gewünschten
+      // Reihenfolge der Fotokarten und bleibt unabhängig von
+      // Dateinamen oder Upload-Reihenfolge stabil.
+      const aOrder = Number.isFinite(a.sortOrder)
+        ? a.sortOrder
+        : Number.POSITIVE_INFINITY;
+      const bOrder = Number.isFinite(b.sortOrder)
+        ? b.sortOrder
+        : Number.POSITIVE_INFINITY;
 
-        const bFeatured =
-          Number.isFinite(b.featuredOrder)
-            ? b.featuredOrder
-            : Number.POSITIVE_INFINITY;
-
-        if (aFeatured !== bFeatured) {
-          return aFeatured - bFeatured;
-        }
+      if (aOrder !== bOrder) {
+        return sortMode === "newest"
+          ? aOrder - bOrder
+          : bOrder - aOrder;
       }
 
       const diff = dateValue(a) - dateValue(b);
