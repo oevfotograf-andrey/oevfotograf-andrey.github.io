@@ -197,6 +197,70 @@
   let sortMode = "newest";
   let visiblePhotos = [];
   let currentLightboxIndex = 0;
+  const galleryFavoriteIds = new Set();
+  let galleryFavoriteBusy = false;
+
+  function galleryFavoriteId(photo) {
+    return `gallery-photo-${photo.id}`;
+  }
+
+  function isGalleryFavorite(photo) {
+    return galleryFavoriteIds.has(galleryFavoriteId(photo));
+  }
+
+  function updateGalleryFavoriteButton(button, photo) {
+    if (!button || !photo) return;
+
+    const saved = isGalleryFavorite(photo);
+    button.classList.toggle("is-saved", saved);
+    button.setAttribute("aria-pressed", String(saved));
+    button.setAttribute(
+      "aria-label",
+      saved
+        ? `${photo.title} aus Favoriten entfernen`
+        : `${photo.title} zu Favoriten speichern`
+    );
+    button.textContent = saved ? "★" : "☆";
+    button.title = saved
+      ? "Aus Favoriten entfernen"
+      : "Zu Favoriten speichern";
+  }
+
+  function updateLightboxFavoriteControl() {
+    const button = $("#lightboxFavorite");
+    const photo = visiblePhotos[currentLightboxIndex];
+    if (!button) return;
+
+    if (!photo) {
+      button.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
+    const saved = isGalleryFavorite(photo);
+    button.classList.toggle("is-saved", saved);
+    button.setAttribute("aria-pressed", String(saved));
+    button.textContent = saved
+      ? "★ Gespeichert"
+      : "☆ Zu Favoriten";
+    button.setAttribute(
+      "aria-label",
+      saved
+        ? `${photo.title} aus Favoriten entfernen`
+        : `${photo.title} zu Favoriten speichern`
+    );
+  }
+
+  function syncGalleryFavoriteControls() {
+    $$(".gallery-favorite").forEach((button) => {
+      const photo = photos.find(
+        (item) => String(item.id) === button.dataset.photoId
+      );
+      if (photo) updateGalleryFavoriteButton(button, photo);
+    });
+
+    updateLightboxFavoriteControl();
+  }
 
   function dateValue(photo) {
     const value = photo.sortDate || photo.date;
@@ -343,7 +407,18 @@
       overlay.className = "card-overlay";
       overlay.textContent = "Klick für Großansicht";
 
-      wrap.append(img, fallback, overlay);
+      const favorite = document.createElement("button");
+      favorite.type = "button";
+      favorite.className = "gallery-favorite";
+      favorite.dataset.photoId = String(photo.id);
+      updateGalleryFavoriteButton(favorite, photo);
+      favorite.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await toggleGalleryFavorite(photo, favorite);
+      });
+
+      wrap.append(img, fallback, overlay, favorite);
 
       const meta = document.createElement("div");
       meta.className = "card-meta";
@@ -486,6 +561,8 @@
     lightboxCounter.textContent =
       `${currentLightboxIndex + 1} / ${visiblePhotos.length}`;
 
+    updateLightboxFavoriteControl();
+
     // Das nächste und vorherige Bild werden vorsichtig vorgeladen,
     // damit die Navigation in der Großansicht möglichst direkt reagiert.
     if (visiblePhotos.length > 1) {
@@ -526,6 +603,17 @@
   $("#lightboxNext").addEventListener("click", nextPhoto);
   $("#lightboxPrev").addEventListener("click", previousPhoto);
 
+  const lightboxFavorite = $("#lightboxFavorite");
+  if (lightboxFavorite) {
+    lightboxFavorite.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const photo = visiblePhotos[currentLightboxIndex];
+      if (!photo) return;
+      await toggleGalleryFavorite(photo, lightboxFavorite);
+    });
+  }
+
   lightbox.addEventListener("click", (event) => {
     if (event.target.matches("[data-close-lightbox]")) {
       closeLightbox();
@@ -561,7 +649,7 @@
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       lightboxSwipeAllowed = !target.closest(
-        ".lightbox-close, .lightbox-arrow"
+        ".lightbox-close, .lightbox-arrow, .lightbox-favorite"
       );
     },
     { passive: true }
@@ -1228,6 +1316,160 @@
     });
   }
 
+  async function refreshGalleryFavoriteState() {
+    try {
+      const items = await favoriteDbGetAll();
+      galleryFavoriteIds.clear();
+      items.forEach((item) => {
+        if (
+          typeof item.id === "string" &&
+          item.id.startsWith("gallery-photo-")
+        ) {
+          galleryFavoriteIds.add(item.id);
+        }
+      });
+    } catch (error) {
+      console.warn("Galerie-Favoriten konnten nicht geladen werden", error);
+      galleryFavoriteIds.clear();
+    }
+
+    syncGalleryFavoriteControls();
+  }
+
+  function galleryFavoriteMetadata(photo, exif) {
+    const dateTaken =
+      exif.DateTimeOriginal ||
+      exif.CreateDate ||
+      photo.sortDate ||
+      photo.date ||
+      "Nicht vorhanden";
+
+    const bearing = Number(exif.GPSImgDirection);
+
+    return {
+      camera:
+        [exif.Make || "", exif.Model || ""]
+          .filter(Boolean)
+          .join(" ") || "Nicht vorhanden",
+      lens: exif.LensModel || "Nicht vorhanden",
+      shutter: formatExposure(Number(exif.ExposureTime)) || "Nicht vorhanden",
+      aperture: formatAperture(Number(exif.FNumber)) || "Nicht vorhanden",
+      iso: Number.isFinite(Number(exif.ISO))
+        ? String(exif.ISO)
+        : "Nicht vorhanden",
+      focal: formatFocal(Number(exif.FocalLength)) || "Nicht vorhanden",
+      author: exif.Artist || "Nicht vorhanden",
+      copyright: exif.Copyright || "Nicht vorhanden",
+      dateTaken,
+      direction: Number.isFinite(bearing)
+        ? `${directionName(bearing)} · ${formatNumber(bearing, 0)}°`
+        : "Nicht vorhanden"
+    };
+  }
+
+  async function buildGalleryFavoriteRecord(photo) {
+    const response = await fetch(imagePath(photo), {
+      cache: "force-cache"
+    });
+
+    if (!response.ok) {
+      throw new Error(`Bild konnte nicht geladen werden (${response.status})`);
+    }
+
+    const imageBlob = await response.blob();
+    const buffer = await imageBlob.arrayBuffer();
+    const exif = parseExif(buffer);
+
+    const lat = dmsToDecimal(
+      exif.GPSLatitude,
+      exif.GPSLatitudeRef
+    );
+    const lon = dmsToDecimal(
+      exif.GPSLongitude,
+      exif.GPSLongitudeRef
+    );
+    const bearing = Number(exif.GPSImgDirection);
+
+    const hasGps =
+      Number.isFinite(lat) &&
+      Number.isFinite(lon);
+
+    const gps = hasGps
+      ? {
+          lat: Number(lat),
+          lon: Number(lon),
+          bearing: Number.isFinite(bearing) ? bearing : null
+        }
+      : null;
+
+    const locationName = hasGps
+      ? await reverseGeocode(gps.lat, gps.lon)
+      : photo.location || "";
+
+    return {
+      id: galleryFavoriteId(photo),
+      fileName: photo.title,
+      originalFileName: photo.file,
+      source: "gallery",
+      photoId: photo.id,
+      imageBlob,
+      mime: imageBlob.type || "image/jpeg",
+      savedAt: Date.now(),
+      metadata: galleryFavoriteMetadata(photo, exif),
+      locationName,
+      gps
+    };
+  }
+
+  async function toggleGalleryFavorite(photo, control = null) {
+    if (!photo || galleryFavoriteBusy) return;
+
+    const id = galleryFavoriteId(photo);
+    const button = control || $("#lightboxFavorite");
+    galleryFavoriteBusy = true;
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = isGalleryFavorite(photo)
+        ? "Entfernen…"
+        : "Speichern…";
+    }
+
+    try {
+      if (isGalleryFavorite(photo)) {
+        await favoriteDbDelete(id);
+        galleryFavoriteIds.delete(id);
+        await Promise.all([
+          renderFavoriteLibrary(null),
+          renderFavoriteLocations(null)
+        ]);
+      } else {
+        const record = await buildGalleryFavoriteRecord(photo);
+        await favoriteDbPut(record);
+        galleryFavoriteIds.add(id);
+        await Promise.all([
+          renderFavoriteLibrary(id),
+          record.gps
+            ? renderFavoriteLocations(id)
+            : renderFavoriteLocations(null)
+        ]);
+      }
+
+      syncGalleryFavoriteControls();
+    } catch (error) {
+      console.error("Galerie-Favorit konnte nicht geändert werden", error);
+      alert(
+        "Dieses Galeriefoto konnte nicht lokal gespeichert werden. " +
+        "Prüfe den verfügbaren Speicher und lade die Seite anschließend neu."
+      );
+      await refreshGalleryFavoriteState();
+    } finally {
+      galleryFavoriteBusy = false;
+      if (button) button.disabled = false;
+      syncGalleryFavoriteControls();
+    }
+  }
+
   function updateFavoriteButton(saved) {
     if (!favoriteButton) return;
     favoriteButton.disabled = !currentAnalyzedFile;
@@ -1358,6 +1600,10 @@
         event.stopPropagation();
         try {
           await favoriteDbDelete(item.id);
+          if (typeof item.id === "string" && item.id.startsWith("gallery-photo-")) {
+            galleryFavoriteIds.delete(item.id);
+            syncGalleryFavoriteControls();
+          }
           if (currentFavoriteId === item.id) {
             currentFavoriteId = null;
             updateFavoriteButton(false);
@@ -1518,6 +1764,10 @@
     removeButton.onclick = async () => {
       try {
         await favoriteDbDelete(selected.id);
+        if (typeof selected.id === "string" && selected.id.startsWith("gallery-photo-")) {
+          galleryFavoriteIds.delete(selected.id);
+          syncGalleryFavoriteControls();
+        }
         if (currentFavoriteId === selected.id) {
           currentFavoriteId = null;
           updateFavoriteButton(false);
@@ -1914,5 +2164,5 @@
   $("#year").textContent =
     new Date().getFullYear();
 
-  renderGallery();
+  refreshGalleryFavoriteState().finally(renderGallery);
 })();

@@ -100,10 +100,10 @@
       </div>
 
       <div class="upload-note">
-        <span class="mini-icon">+</span>
+        <span class="mini-icon">☆</span>
         <div>
-          <strong>14 Archivkarten sind direkt in der Galerie verfügbar.</strong>
-          <p>Die Reihenfolge bleibt bei „Neueste zuerst“ bewusst festgelegt. Über die Sortierung kannst du jederzeit zur umgekehrten Reihenfolge wechseln.</p>
+          <strong>Alle 14 Archivkarten können direkt als lokale Favoriten gespeichert werden.</strong>
+          <p>Die Reihenfolge bleibt bei „Neueste zuerst“ bewusst festgelegt. Über die Sortierung kannst du jederzeit zur umgekehrten Reihenfolge wechseln. Favoriten bleiben nur lokal auf diesem Gerät und werden nicht auf einen Server hochgeladen.</p>
         </div>
       </div>
     </section>
@@ -331,7 +331,10 @@
             <h3 id="lightboxTitle"></h3>
             <p id="lightboxDescription"></p>
           </div>
-          <div class="lightbox-counter" id="lightboxCounter"></div>
+          <div class="lightbox-actions">
+            <button class="lightbox-favorite" id="lightboxFavorite" type="button" aria-pressed="false">☆ Zu Favoriten</button>
+            <div class="lightbox-counter" id="lightboxCounter"></div>
+          </div>
         </figcaption>
       </figure>
       <button class="lightbox-arrow next" id="lightboxNext" type="button" aria-label="Nächstes Bild">Nächstes Bild ›</button>
