@@ -672,7 +672,7 @@
     const availableLabel =
       labels.available || "Auf Karte zeigen";
     const unavailableLabel =
-      labels.unavailable || "Kein Ort verfügbar";
+      labels.unavailable || "Keine GPS-Daten vorhanden";
 
     button.hidden = false;
     button.disabled = !hasGps;
@@ -1782,7 +1782,7 @@
       Boolean(selected.gps),
       {
         available: "Ort auf Karte ansehen",
-        unavailable: "Kein Ort verfügbar"
+        unavailable: "Keine GPS-Daten vorhanden"
       }
     );
     mapButton.onclick = () => {
@@ -1948,7 +1948,7 @@
       false,
       {
         available: "Auf Karte zeigen",
-        unavailable: "Kein Ort verfügbar"
+        unavailable: "Keine GPS-Daten vorhanden"
       }
     );
 
@@ -2091,7 +2091,7 @@
           true,
           {
             available: "Auf Karte zeigen",
-            unavailable: "Kein Ort verfügbar"
+            unavailable: "Keine GPS-Daten vorhanden"
           }
         );
 
@@ -2127,7 +2127,7 @@
           false,
           {
             available: "Auf Karte zeigen",
-            unavailable: "Kein Ort verfügbar"
+            unavailable: "Keine GPS-Daten vorhanden"
           }
         );
 
@@ -2149,7 +2149,7 @@
         false,
         {
           available: "Auf Karte zeigen",
-          unavailable: "Kein Ort verfügbar"
+          unavailable: "Keine GPS-Daten vorhanden"
         }
       );
 
