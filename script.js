@@ -62,7 +62,7 @@
       featuredOrder: 2,
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Regionalbahn im Nordschwarzwald",
-      sortOrder: 2,
+      sortOrder: 9,
       description: "Ein moderner Regionaltriebzug auf der Strecke durch den Nordschwarzwald."
     },
     {
@@ -73,7 +73,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · CALW",
       title: "Im tiefen Calwer ZOB",
-      sortOrder: 9,
+      sortOrder: 8,
       description: "Ein weißer Mercedes-Benz-Bus im geschützten Bereich des Calwer ZOB."
     },
     {
@@ -84,7 +84,7 @@
       sortDate: "2026-08-20",
       kicker: "REGIONAL · NORDSCHWARZWALD",
       title: "Neue Eisenbahn im Hang",
-      sortOrder: 8,
+      sortOrder: 7,
       description: "Der neue Regionaltriebzug folgt der Strecke am bewaldeten Hang entlang."
     },
     {
@@ -95,7 +95,7 @@
       sortDate: "2026-08-20",
       kicker: "BUS · NORDSCHWARZWALD",
       title: "Schnappschuss vom Zug",
-      sortOrder: 7,
+      sortOrder: 6,
       description: "Ein farbenfroher Regionalbus im Vorbeifahren."
     },
     {
@@ -106,7 +106,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Am Bahnsteig entlang",
-      sortOrder: 6,
+      sortOrder: 5,
       description: "Ein S-Bahn-Zug zieht sich entlang des Bahnsteigs in die Tiefe des Motivs."
     },
     {
@@ -117,7 +117,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · STUTTGART",
       title: "Nah dran",
-      sortOrder: 5,
+      sortOrder: 4,
       description: "Eine nahe Perspektive auf die Front des S-Bahn-Triebzugs."
     },
     {
@@ -128,7 +128,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Zwischen zwei Triebzügen",
-      sortOrder: 4,
+      sortOrder: 3,
       description: "Ein ungewöhnlicher Blick genau in den schmalen Raum zwischen zwei Fahrzeugen."
     },
     {
@@ -139,7 +139,7 @@
       sortDate: "2026-08-20",
       kicker: "S-BAHN · DETAIL",
       title: "Kupplung im Detail",
-      sortOrder: 3,
+      sortOrder: 2,
       description: "Die beiden Fahrzeugenden und ihre Kupplungen aus unmittelbarer Nähe."
     },
     {
@@ -203,6 +203,10 @@
     return value ? new Date(`${value}T12:00:00`).getTime() : 0;
   }
 
+  // Die feste Reihenfolge für „Neueste zuerst“ ist bewusst redaktionell
+  // definiert. Sie darf nicht automatisch aus Dateinamen, Upload-Zeit oder
+  // EXIF-Datum neu berechnet werden. „Älteste zuerst“ zeigt exakt dieselbe
+  // Reihenfolge rückwärts.
   function sortedPhotos(list) {
     return [...list].sort((a, b) => {
       // Feste Standardreihenfolge für „Neueste zuerst“.
