@@ -1302,6 +1302,19 @@
     syncGalleryFavoriteControls();
   }
 
+  async function refreshFavoriteViews(selectedId = null, locationSelectedId = null) {
+    const results = await Promise.allSettled([
+      renderFavoriteLibrary(selectedId),
+      renderFavoriteLocations(locationSelectedId)
+    ]);
+
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.warn("Favoritenansicht konnte nicht aktualisiert werden", result.reason);
+      }
+    });
+  }
+
   function galleryFavoriteMetadata(photo, exif) {
     const dateTaken =
       exif.DateTimeOriginal ||
@@ -1368,9 +1381,14 @@
         }
       : null;
 
-    const locationName = hasGps
-      ? await reverseGeocode(gps.lat, gps.lon)
-      : photo.location || "";
+    let locationName = photo.location || "";
+    if (hasGps) {
+      try {
+        locationName = await reverseGeocode(gps.lat, gps.lon);
+      } catch (error) {
+        console.warn("Adresse für Galerie-Favorit konnte nicht ermittelt werden", error);
+      }
+    }
 
     return {
       id: galleryFavoriteId(photo),
@@ -1405,20 +1423,12 @@
       if (isGalleryFavorite(photo)) {
         await favoriteDbDelete(id);
         galleryFavoriteIds.delete(id);
-        await Promise.all([
-          renderFavoriteLibrary(null),
-          renderFavoriteLocations(null)
-        ]);
+        await refreshFavoriteViews(null, null);
       } else {
         const record = await buildGalleryFavoriteRecord(photo);
         await favoriteDbPut(record);
         galleryFavoriteIds.add(id);
-        await Promise.all([
-          renderFavoriteLibrary(id),
-          record.gps
-            ? renderFavoriteLocations(id)
-            : renderFavoriteLocations(null)
-        ]);
+        await refreshFavoriteViews(id, record.gps ? id : null);
       }
 
       syncGalleryFavoriteControls();
@@ -1440,8 +1450,10 @@
     if (!favoriteButton) return;
     favoriteButton.disabled = !currentAnalyzedFile;
     favoriteButton.textContent = saved
-      ? "✓ In Favoriten gespeichert"
+      ? "Aus Favoriten entfernen"
       : "☆ Zu Favoriten speichern";
+    favoriteButton.classList.toggle("is-saved", Boolean(saved));
+    favoriteButton.setAttribute("aria-pressed", String(Boolean(saved)));
 
     if (favoriteHint) {
       favoriteHint.textContent = !currentAnalyzedFile
@@ -1715,6 +1727,7 @@
       : "Dieses Foto hat keine GPS-Koordinaten.";
 
     const mapButton = $("#favoriteDetailMapButton");
+    mapButton.hidden = !selected.gps;
     mapButton.disabled = !selected.gps;
     mapButton.onclick = () => {
       if (!selected.gps) return;
@@ -1750,52 +1763,93 @@
   }
 
   async function saveCurrentFavorite() {
-    if (!currentAnalyzedFile) return;
+    if (!currentAnalyzedFile || !favoriteButton) return;
 
     const id = favoriteIdFor(currentAnalyzedFile);
-    const metadata = {
-      camera: $("#camera").textContent,
-      lens: $("#lens").textContent,
-      shutter: $("#shutter").textContent,
-      aperture: $("#aperture").textContent,
-      iso: $("#iso").textContent,
-      focal: $("#focal").textContent,
-      author: $("#author").textContent,
-      copyright: $("#copyright").textContent,
-      dateTaken: $("#dateTaken").textContent,
-      direction: $("#direction").textContent
-    };
-
-    const record = {
-      id,
-      fileName: currentAnalyzedFile.name,
-      imageBlob: currentAnalyzedFile,
-      mime: currentAnalyzedFile.type,
-      savedAt: Date.now(),
-      metadata,
-      locationName: currentLocationName || "",
-      gps: currentGps ? {
-        lat: Number(currentGps.lat),
-        lon: Number(currentGps.lon),
-        bearing: Number.isFinite(Number(currentGps.bearing)) ? Number(currentGps.bearing) : null
-      } : null
-    };
-
-    favoriteButton.disabled = true;
-    favoriteButton.textContent = "Speichern…";
+    let alreadySaved = false;
 
     try {
+      alreadySaved = Boolean(await favoriteDbGet(id));
+    } catch (error) {
+      console.error("Favoritenstatus konnte nicht geprüft werden", error);
+      updateFavoriteButton(false);
+      alert("Der lokale Favoritenspeicher ist in diesem Browser nicht verfügbar.");
+      return;
+    }
+
+    favoriteButton.disabled = true;
+    favoriteButton.textContent = alreadySaved ? "Entfernen…" : "Speichern…";
+
+    try {
+      if (alreadySaved) {
+        await favoriteDbDelete(id);
+        const stillSaved = await favoriteDbGet(id);
+        if (stillSaved) {
+          throw new Error("Favorit wurde nicht entfernt");
+        }
+
+        currentFavoriteId = id;
+        updateFavoriteButton(false);
+        await refreshFavoriteViews(null, null);
+        return;
+      }
+
+      const metadata = {
+        camera: $("#camera").textContent,
+        lens: $("#lens").textContent,
+        shutter: $("#shutter").textContent,
+        aperture: $("#aperture").textContent,
+        iso: $("#iso").textContent,
+        focal: $("#focal").textContent,
+        author: $("#author").textContent,
+        copyright: $("#copyright").textContent,
+        dateTaken: $("#dateTaken").textContent,
+        direction: $("#direction").textContent
+      };
+
+      const record = {
+        id,
+        fileName: currentAnalyzedFile.name,
+        imageBlob: currentAnalyzedFile,
+        mime: currentAnalyzedFile.type,
+        savedAt: Date.now(),
+        metadata,
+        locationName: currentLocationName || "",
+        gps: currentGps ? {
+          lat: Number(currentGps.lat),
+          lon: Number(currentGps.lon),
+          bearing: Number.isFinite(Number(currentGps.bearing)) ? Number(currentGps.bearing) : null
+        } : null
+      };
+
       await favoriteDbPut(record);
+
+      // Erst nach erfolgreicher Verifikation gilt der Speichervorgang als erfolgreich.
+      const savedRecord = await favoriteDbGet(id);
+      if (!savedRecord) {
+        throw new Error("Favorit wurde nach dem Speichern nicht gefunden");
+      }
+
       currentFavoriteId = id;
       updateFavoriteButton(true);
-      await Promise.all([
-        renderFavoriteLibrary(id),
-        currentGps ? renderFavoriteLocations(id) : renderFavoriteLocations(null)
-      ]);
+
+      // Fehler beim Neuzeichnen der Ansichten dürfen keinen falschen Speicherfehler auslösen.
+      await refreshFavoriteViews(id, currentGps ? id : null);
     } catch (error) {
-      console.error(error);
-      updateFavoriteButton(false);
-      alert("Das Foto konnte nicht lokal gespeichert werden. Prüfe den verfügbaren Speicher des Browsers.");
+      console.error("Favorit konnte nicht geändert werden", error);
+      let actuallySaved = false;
+      try {
+        actuallySaved = Boolean(await favoriteDbGet(id));
+      } catch (_) {}
+      updateFavoriteButton(actuallySaved);
+
+      if (!actuallySaved) {
+        alert("Das Foto konnte nicht lokal gespeichert werden. Prüfe den verfügbaren Speicher des Browsers.");
+      }
+    } finally {
+      if (favoriteButton) {
+        favoriteButton.disabled = !currentAnalyzedFile;
+      }
     }
   }
 
@@ -1830,9 +1884,16 @@
     result.classList.remove("hidden");
     $("#exifStatus").textContent = "Analyse…";
 
+    if (mapButton) {
+      mapButton.disabled = true;
+      mapButton.hidden = true;
+    }
+
     if (favoriteButton) {
       favoriteButton.disabled = true;
       favoriteButton.textContent = "☆ Zu Favoriten speichern";
+      favoriteButton.classList.remove("is-saved");
+      favoriteButton.setAttribute("aria-pressed", "false");
     }
 
     if (favoriteHint) {
@@ -1956,18 +2017,19 @@
         $("#locationName").textContent =
           "Adresse wird ermittelt…";
 
+        mapButton.hidden = false;
         mapButton.disabled = false;
 
-        const address =
-          await reverseGeocode(
-            lat,
-            lon
-          );
+        let address = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        try {
+          address = await reverseGeocode(lat, lon);
+        } catch (error) {
+          console.warn("Adresse konnte nicht ermittelt werden", error);
+        }
 
         currentLocationName = address;
 
-        $("#locationName").textContent =
-          address;
+        $("#locationName").textContent = address;
 
         $("#exifStatus").textContent =
           "EXIF + GPS gefunden";
@@ -1983,6 +2045,7 @@
           "Kein GPS gefunden";
 
         mapButton.disabled = true;
+        mapButton.hidden = true;
 
         $("#exifStatus").textContent =
           Object.keys(exif).length
