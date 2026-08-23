@@ -1400,13 +1400,44 @@
     });
   }
 
-  function hasFavoriteGps(item) {
-    return Boolean(
-      item &&
-      item.gps &&
-      Number.isFinite(Number(item.gps.lat)) &&
-      Number.isFinite(Number(item.gps.lon))
+  function getFavoriteGps(item) {
+    if (!item) return null;
+
+    const source = item.gps || item.location || item.coordinates || {};
+    const lat = Number(
+      source.lat ??
+      source.latitude ??
+      item.lat ??
+      item.latitude
     );
+    const lon = Number(
+      source.lon ??
+      source.lng ??
+      source.longitude ??
+      item.lon ??
+      item.lng ??
+      item.longitude
+    );
+    const bearing = Number(
+      source.bearing ??
+      source.direction ??
+      item.bearing ??
+      item.direction
+    );
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return null;
+    }
+
+    return {
+      lat,
+      lon,
+      bearing: Number.isFinite(bearing) ? bearing : null
+    };
+  }
+
+  function hasFavoriteGps(item) {
+    return Boolean(getFavoriteGps(item));
   }
 
   function galleryPhotoFromLegacyRecord(item) {
@@ -1460,6 +1491,98 @@
       }
 
       await favoriteDbDelete(item.id);
+    }
+  }
+
+  async function repairFavoriteGpsData() {
+    let items = [];
+
+    try {
+      items = await favoriteDbGetAll();
+    } catch (error) {
+      console.warn("GPS-Daten der Favoriten konnten nicht geprüft werden", error);
+      return;
+    }
+
+    for (const item of items) {
+      if (!item || !item.id) continue;
+
+      // Bereits gültige GPS-Daten werden nur in die aktuelle, einheitliche
+      // Form gebracht. Dadurch funktionieren auch ältere Favoriten dauerhaft.
+      const existingGps = getFavoriteGps(item);
+      if (existingGps) {
+        const needsNormalization =
+          !item.gps ||
+          Number(item.gps.lat) !== existingGps.lat ||
+          Number(item.gps.lon) !== existingGps.lon ||
+          Number(item.gps.bearing) !== Number(existingGps.bearing);
+
+        if (needsNormalization) {
+          await favoriteDbPut({
+            ...item,
+            gps: existingGps
+          });
+        }
+        continue;
+      }
+
+      // Ältere Favoriten können eine Adresse und eine Blickrichtung besitzen,
+      // obwohl die GPS-Koordinaten selbst in der IndexedDB-Version noch nicht
+      // gespeichert wurden. Die Originaldatei bleibt aber im Favoriten erhalten,
+      // daher werden die Koordinaten einmal zuverlässig aus ihrem EXIF gelesen.
+      if (!item.imageBlob || typeof item.imageBlob.arrayBuffer !== "function") {
+        continue;
+      }
+
+      try {
+        const buffer = await item.imageBlob.arrayBuffer();
+        const exif = parseExif(buffer);
+        const lat = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
+        const lon = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
+        const bearing = Number(exif.GPSImgDirection);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          continue;
+        }
+
+        const gps = {
+          lat: Number(lat),
+          lon: Number(lon),
+          bearing: Number.isFinite(bearing) ? bearing : null
+        };
+
+        let locationName = String(item.locationName || "").trim();
+        if (!locationName) {
+          try {
+            locationName = await reverseGeocode(gps.lat, gps.lon);
+          } catch (error) {
+            console.warn("Adresse eines bestehenden GPS-Favoriten konnte nicht ergänzt werden", error);
+          }
+        }
+
+        const metadata = {
+          ...(item.metadata || {})
+        };
+
+        if (
+          (!metadata.direction || metadata.direction === "Nicht vorhanden") &&
+          Number.isFinite(gps.bearing)
+        ) {
+          metadata.direction =
+            `${directionName(gps.bearing)} (${formatNumber(gps.bearing, 0)}°)`;
+        }
+
+        await favoriteDbPut({
+          ...item,
+          gps,
+          locationName,
+          metadata
+        });
+      } catch (error) {
+        // Ein einzelnes defektes Bild darf die gesamte Favoritenverwaltung
+        // niemals blockieren.
+        console.warn("Bestehender Favorit konnte nicht auf GPS geprüft werden", item.id, error);
+      }
     }
   }
 
@@ -1689,12 +1812,19 @@
 
   function favoriteAddressText(item) {
     if (item.locationName) return item.locationName;
-    if (item.gps) return `${Number(item.gps.lat).toFixed(6)}, ${Number(item.gps.lon).toFixed(6)}`;
+
+    const gps = getFavoriteGps(item);
+    if (gps) {
+      return `${gps.lat.toFixed(6)}, ${gps.lon.toFixed(6)}`;
+    }
+
     return "Kein GPS gespeichert";
   }
 
   function favoriteDirectionText(item) {
-    const bearing = Number(item.gps && item.gps.bearing);
+    const gps = getFavoriteGps(item);
+    const bearing = Number(gps && gps.bearing);
+
     return Number.isFinite(bearing)
       ? `${directionName(bearing)} · ${formatNumber(bearing, 0)}°`
       : "Blickrichtung nicht vorhanden";
@@ -1706,7 +1836,9 @@
     const caption = $("#locationMapCaption");
     if (!frame || !empty || !caption) return;
 
-    if (!item || !item.gps) {
+    const gps = getFavoriteGps(item);
+
+    if (!gps) {
       frame.classList.add("hidden");
       frame.removeAttribute("src");
       empty.classList.remove("hidden");
@@ -1714,7 +1846,7 @@
       return;
     }
 
-    frame.src = buildMapUrl(Number(item.gps.lat), Number(item.gps.lon));
+    frame.src = buildMapUrl(gps.lat, gps.lon);
     empty.classList.add("hidden");
     frame.classList.remove("hidden");
     caption.classList.remove("hidden");
@@ -1958,30 +2090,37 @@
 
     if (selectedHasGps) {
       // GPS-Fotos werden ausschließlich über „03 / Aufnahmeorte“ verwaltet.
-      // Die Hinweise werden bei jedem Rendern aus den gespeicherten GPS-Daten
-      // abgeleitet und bleiben deshalb auch nach einem Seiten-Reload erhalten.
-      mapButton.hidden = true;
+      // Diese Entscheidung wird ausschließlich aus den gespeicherten
+      // Koordinaten abgeleitet und deshalb nach jedem Reload identisch gesetzt.
+      mapButton.setAttribute("hidden", "");
+      mapButton.classList.add("hidden");
       mapButton.disabled = true;
       mapButton.setAttribute("aria-disabled", "true");
       mapButton.onclick = null;
 
       if (locationHint) {
+        locationHint.removeAttribute("hidden");
         locationHint.hidden = false;
+        locationHint.classList.remove("hidden");
         locationHint.textContent =
           "Du kannst den Standort des Fotos in der Kategorie „03 / Aufnahmeorte“ nachsehen.";
       }
     } else {
       if (locationHint) {
+        locationHint.setAttribute("hidden", "");
         locationHint.hidden = true;
+        locationHint.classList.add("hidden");
         locationHint.textContent = "";
       }
 
+      mapButton.removeAttribute("hidden");
+      mapButton.hidden = false;
+      mapButton.classList.remove("hidden");
       setMapButtonState(
         mapButton,
         false,
         { unavailable: "Kein Ort verfügbar" }
       );
-      mapButton.hidden = false;
       mapButton.onclick = null;
     }
 
@@ -1989,22 +2128,27 @@
     const actionHint = $("#favoriteDetailActionHint");
 
     if (selectedHasGps) {
-      removeButton.hidden = true;
+      removeButton.setAttribute("hidden", "");
+      removeButton.classList.add("hidden");
       removeButton.disabled = true;
       removeButton.onclick = null;
 
       if (actionHint) {
+        actionHint.removeAttribute("hidden");
         actionHint.hidden = false;
         actionHint.classList.remove("hidden");
         actionHint.textContent =
           "Dieses Foto mit GPS kannst du über „03 / Aufnahmeorte“ aus den Favoriten entfernen.";
       }
     } else {
+      removeButton.removeAttribute("hidden");
       removeButton.hidden = false;
+      removeButton.classList.remove("hidden");
       removeButton.disabled = false;
       removeButton.textContent = "Aus Favoriten entfernen";
 
       if (actionHint) {
+        actionHint.setAttribute("hidden", "");
         actionHint.hidden = true;
         actionHint.classList.add("hidden");
         actionHint.textContent = "";
@@ -2480,6 +2624,12 @@
       await migrateLegacyFavorites();
     } catch (error) {
       console.warn("Favoritenmigration wurde übersprungen", error);
+    }
+
+    try {
+      await repairFavoriteGpsData();
+    } catch (error) {
+      console.warn("Bestehende GPS-Favoriten konnten nicht vollständig repariert werden", error);
     }
 
     await refreshGalleryFavoriteState();

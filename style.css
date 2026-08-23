@@ -590,14 +590,12 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 }
 
 .favorite-detail-action-hint{
-  flex:0 1 320px;
+  flex:0 1 360px;
   margin:0;
-  padding:10px 13px;
-  border:1px dashed var(--line);
-  border-radius:12px;
+  padding:2px 0;
   color:var(--muted);
   font-size:11px;
-  line-height:1.45;
+  line-height:1.5;
   text-align:right;
 }
 .favorite-detail-metadata{
