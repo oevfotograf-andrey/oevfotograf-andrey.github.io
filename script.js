@@ -701,6 +701,9 @@
   const FAVORITES_DB = "fotografie-stuttgart-favorites";
   const FAVORITES_STORE = "photos";
   const FAVORITES_VERSION = 1;
+  // Version 2 ergänzt eine automatische Reparatur älterer lokaler Favoriten:
+  // EXIF und GPS werden einmal direkt aus der gespeicherten Bilddatei neu gelesen.
+  const FAVORITES_METADATA_VERSION = 2;
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -1396,6 +1399,170 @@
     };
   }
 
+  function favoriteMetadataFromExif(exif, fallback = {}) {
+    const dateValue =
+      exif.DateTimeOriginal ||
+      exif.CreateDate ||
+      fallback.dateTaken ||
+      "";
+
+    const bearing = Number(exif.GPSImgDirection);
+
+    return {
+      camera:
+        [exif.Make || "", exif.Model || ""]
+          .filter(Boolean)
+          .join(" ") ||
+        fallback.camera ||
+        "Nicht vorhanden",
+      lens: exif.LensModel || fallback.lens || "Nicht vorhanden",
+      shutter:
+        formatExposure(Number(exif.ExposureTime)) !== "—"
+          ? formatExposure(Number(exif.ExposureTime))
+          : fallback.shutter || "Nicht vorhanden",
+      aperture:
+        formatAperture(Number(exif.FNumber)) !== "—"
+          ? formatAperture(Number(exif.FNumber))
+          : fallback.aperture || "Nicht vorhanden",
+      iso: Number.isFinite(Number(exif.ISO))
+        ? `ISO ${exif.ISO}`
+        : fallback.iso || "Nicht vorhanden",
+      focal:
+        formatFocal(Number(exif.FocalLength)) !== "—"
+          ? formatFocal(Number(exif.FocalLength))
+          : fallback.focal || "Nicht vorhanden",
+      author: exif.Artist || fallback.author || "Nicht vorhanden",
+      copyright: exif.Copyright || fallback.copyright || "Nicht vorhanden",
+      dateTaken: dateValue
+        ? formatExifDate(dateValue)
+        : fallback.dateTaken || "Nicht vorhanden",
+      direction: Number.isFinite(bearing)
+        ? `${directionName(bearing)} · ${formatNumber(bearing, 0)}°`
+        : fallback.direction || "Nicht vorhanden"
+    };
+  }
+
+  function gpsFromExif(exif) {
+    const lat = dmsToDecimal(
+      exif.GPSLatitude,
+      exif.GPSLatitudeRef
+    );
+    const lon = dmsToDecimal(
+      exif.GPSLongitude,
+      exif.GPSLongitudeRef
+    );
+    const bearing = Number(exif.GPSImgDirection);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return null;
+    }
+
+    return {
+      lat: Number(lat),
+      lon: Number(lon),
+      bearing: Number.isFinite(bearing) ? bearing : null
+    };
+  }
+
+  function needsFavoriteRepair(item) {
+    return Number(item && item.metadataVersion) < FAVORITES_METADATA_VERSION;
+  }
+
+  async function exifFromFavoriteRecord(item) {
+    if (item && item.imageBlob && typeof item.imageBlob.arrayBuffer === "function") {
+      const buffer = await item.imageBlob.arrayBuffer();
+      const exif = parseExif(buffer);
+      if (Object.keys(exif).length) {
+        return { exif, imageBlob: item.imageBlob };
+      }
+    }
+
+    // Fallback für ältere Galeriefavoriten: das aktuelle Original erneut laden.
+    if (item && item.source === "gallery") {
+      const photo = photos.find((entry) => entry.id === item.photoId);
+      if (photo) {
+        const response = await fetch(imagePath(photo), { cache: "no-store" });
+        if (response.ok) {
+          const imageBlob = await response.blob();
+          const exif = parseExif(await imageBlob.arrayBuffer());
+          if (Object.keys(exif).length) {
+            return { exif, imageBlob };
+          }
+        }
+      }
+    }
+
+    return { exif: {}, imageBlob: item && item.imageBlob };
+  }
+
+  function shouldRefreshLocationName(value) {
+    const text = String(value || "").trim();
+    return !text ||
+      text === "Kein GPS gespeichert" ||
+      text === "Keine GPS-Daten vorhanden" ||
+      /^[-+]?\d+(?:\.\d+)?,\s*[-+]?\d+(?:\.\d+)?$/.test(text);
+  }
+
+  async function repairFavoriteRecord(item) {
+    if (!item || !needsFavoriteRepair(item)) {
+      return item;
+    }
+
+    let source;
+    try {
+      source = await exifFromFavoriteRecord(item);
+    } catch (error) {
+      console.warn("Favoriten-EXIF konnte nicht erneut gelesen werden", error);
+      return { ...item, metadataVersion: FAVORITES_METADATA_VERSION };
+    }
+
+    const exif = source.exif || {};
+    const repaired = {
+      ...item,
+      imageBlob: source.imageBlob || item.imageBlob,
+      metadataVersion: FAVORITES_METADATA_VERSION
+    };
+
+    if (Object.keys(exif).length) {
+      repaired.metadata = favoriteMetadataFromExif(exif, item.metadata || {});
+
+      const gps = gpsFromExif(exif);
+      if (gps) {
+        repaired.gps = gps;
+        if (shouldRefreshLocationName(repaired.locationName)) {
+          try {
+            repaired.locationName = await reverseGeocode(gps.lat, gps.lon);
+          } catch (error) {
+            console.warn("Adresse für reparierten Favoriten konnte nicht ermittelt werden", error);
+          }
+        }
+      }
+    }
+
+    return repaired;
+  }
+
+  async function repairStoredFavorites() {
+    let items = [];
+    try {
+      items = await favoriteDbGetAll();
+    } catch (error) {
+      console.warn("Lokale Favoriten konnten nicht für EXIF-Reparatur geladen werden", error);
+      return;
+    }
+
+    for (const item of items) {
+      if (!needsFavoriteRepair(item)) continue;
+
+      const repaired = await repairFavoriteRecord(item);
+      try {
+        await favoriteDbPut(repaired);
+      } catch (error) {
+        console.warn("Reparierter Favorit konnte nicht gespeichert werden", error);
+      }
+    }
+  }
+
   async function buildGalleryFavoriteRecord(photo) {
     const response = await fetch(imagePath(photo), {
       cache: "force-cache"
@@ -1449,7 +1616,11 @@
       imageBlob,
       mime: imageBlob.type || "image/jpeg",
       savedAt: Date.now(),
-      metadata: galleryFavoriteMetadata(photo, exif),
+      metadata: favoriteMetadataFromExif(
+        exif,
+        galleryFavoriteMetadata(photo, exif)
+      ),
+      metadataVersion: FAVORITES_METADATA_VERSION,
       locationName,
       gps
     };
@@ -1870,6 +2041,7 @@
         mime: currentAnalyzedFile.type,
         savedAt: Date.now(),
         metadata,
+        metadataVersion: FAVORITES_METADATA_VERSION,
         locationName: currentLocationName || "",
         gps: currentGps ? {
           lat: Number(currentGps.lat),
@@ -2275,9 +2447,17 @@
     favoriteButton.addEventListener("click", saveCurrentFavorite);
   }
 
-  renderFavoriteLocations();
-  renderFavoriteLibrary();
   updateFavoriteButton(false);
+
+  async function initializeLocalFavorites() {
+    // Ältere Favoriten können aus einer früheren Version stammen, in der
+    // Metadaten oder GPS noch nicht mitgespeichert wurden. Diese werden
+    // einmal direkt aus der lokal gespeicherten Bilddatei rekonstruiert.
+    await repairStoredFavorites();
+    await refreshFavoriteViews();
+  }
+
+  initializeLocalFavorites();
 
   window.addEventListener(
     "pagehide",
