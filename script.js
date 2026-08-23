@@ -1989,26 +1989,13 @@
         ? "Der gespeicherte Aufnahmeort kann in „03 / Aufnahmeorte“ nachgesehen werden."
         : "Dieses Foto hat keine GPS-Koordinaten.";
 
-    const mapButton = $("#favoriteDetailMapButton");
-    setMapButtonState(
-      mapButton,
-      selectedHasStoredLocation,
-      {
-        available: "Standort in Aufnahmeorte ansehen",
-        unavailable: "Keine GPS-Daten vorhanden"
-      }
-    );
-    mapButton.onclick = () => {
-      if (!selectedHasStoredLocation) return;
-      if (selectedHasGps) {
-        setLocationMap(selected);
-      }
-      renderFavoriteLocations(selected.id);
-      const locationSection = $("#orte");
-      if (locationSection) {
-        locationSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    };
+    const locationHint = $("#favoriteDetailLocationHint");
+    if (locationHint) {
+      locationHint.hidden = !selectedHasStoredLocation;
+      locationHint.textContent = selectedHasStoredLocation
+        ? "Sie können den Standort des Fotos in der Kategorie „03 / Aufnahmeorte“ nachsehen."
+        : "Für dieses Foto sind keine GPS-Daten gespeichert.";
+    }
 
     const removeButton = $("#favoriteDetailRemove");
     removeButton.onclick = async () => {

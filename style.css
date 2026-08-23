@@ -663,3 +663,20 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .button.primary:disabled:focus-visible{
   outline:none;
 }
+
+
+.favorite-detail-location-hint {
+  margin: 0;
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .favorite-detail-location-hint {
+    max-width: none;
+    text-align: left;
+  }
+}
