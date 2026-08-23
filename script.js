@@ -706,6 +706,11 @@
   // selbst nicht erneut auslesbar ist, wird die konkrete gespeicherte Adresse
   // einmal zur Wiederherstellung der Koordinaten verwendet.
   const FAVORITES_METADATA_VERSION = 4;
+  // Die Initialreparatur darf nicht parallel mit einem Löschvorgang laufen.
+  // Sonst kann ein bereits gelöschter Datensatz aus einer zuvor gelesenen,
+  // veralteten Reparaturkopie erneut in IndexedDB zurückgeschrieben werden.
+  let favoritesInitializationPromise = null;
+  const favoriteDeleteLocks = new Set();
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -1341,8 +1346,18 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FAVORITES_STORE, "readonly");
       const request = tx.objectStore(FAVORITES_STORE).get(id);
-      request.onsuccess = () => { resolve(request.result || null); db.close(); };
-      request.onerror = () => { reject(request.error); db.close(); };
+      let result = null;
+
+      request.onsuccess = () => {
+        result = request.result || null;
+      };
+      request.onerror = () => reject(request.error || tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Favorit konnte nicht geladen werden"));
+      tx.onerror = () => reject(tx.error || new Error("Favorit konnte nicht geladen werden"));
+      tx.oncomplete = () => {
+        try { db.close(); } catch (_) {}
+        resolve(result);
+      };
     });
   }
 
@@ -1351,8 +1366,18 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FAVORITES_STORE, "readonly");
       const request = tx.objectStore(FAVORITES_STORE).getAll();
-      request.onsuccess = () => { resolve(request.result || []); db.close(); };
-      request.onerror = () => { reject(request.error); db.close(); };
+      let result = [];
+
+      request.onsuccess = () => {
+        result = request.result || [];
+      };
+      request.onerror = () => reject(request.error || tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Favoriten konnten nicht geladen werden"));
+      tx.onerror = () => reject(tx.error || new Error("Favoriten konnten nicht geladen werden"));
+      tx.oncomplete = () => {
+        try { db.close(); } catch (_) {}
+        resolve(result);
+      };
     });
   }
 
@@ -1361,45 +1386,74 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FAVORITES_STORE, "readwrite");
       tx.objectStore(FAVORITES_STORE).put(record);
-      tx.oncomplete = () => { resolve(); db.close(); };
-      tx.onerror = () => { reject(tx.error); db.close(); };
+      tx.oncomplete = () => { try { db.close(); } catch (_) {} resolve(); };
+      tx.onerror = () => { try { db.close(); } catch (_) {} reject(tx.error); };
+      tx.onabort = () => { try { db.close(); } catch (_) {} reject(tx.error || new Error("Favorit konnte nicht gespeichert werden")); };
     });
   }
 
   async function favoriteDbDelete(id) {
+    if (id === null || id === undefined || id === "") {
+      throw new Error("Ungültige Favoriten-ID");
+    }
+
     const db = await openFavoritesDb();
     return new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = (callback) => {
-        if (settled) return;
-        settled = true;
-        try { db.close(); } catch (_) {}
-        callback();
-      };
-
       const tx = db.transaction(FAVORITES_STORE, "readwrite");
-      const request = tx.objectStore(FAVORITES_STORE).delete(id);
+      const store = tx.objectStore(FAVORITES_STORE);
+      store.delete(id);
 
-      request.onerror = () => finish(() => reject(request.error || tx.error));
-      tx.onabort = () => finish(() => reject(tx.error || new Error("Favorit konnte nicht entfernt werden")));
-      tx.onerror = () => finish(() => reject(tx.error || new Error("Favorit konnte nicht entfernt werden")));
-      tx.oncomplete = () => finish(resolve);
+      tx.oncomplete = () => {
+        try { db.close(); } catch (_) {}
+        resolve();
+      };
+      tx.onabort = () => {
+        const error = tx.error || new Error("Favorit konnte nicht entfernt werden");
+        try { db.close(); } catch (_) {}
+        reject(error);
+      };
+      tx.onerror = () => {
+        const error = tx.error || new Error("Favorit konnte nicht entfernt werden");
+        try { db.close(); } catch (_) {}
+        reject(error);
+      };
     });
   }
 
   async function deleteFavoriteRecord(id) {
-    await favoriteDbDelete(id);
+    if (id === null || id === undefined || id === "") {
+      throw new Error("Ungültige Favoriten-ID");
+    }
 
-    // IndexedDB-Operationen werden zusätzlich geprüft, damit kein falscher
-    // Erfolg oder Fehler angezeigt wird, wenn ein älterer Datensatz gerade
-    // parallel durch die automatische Reparatur verarbeitet wurde.
-    const remaining = await favoriteDbGet(id);
-    if (remaining) {
-      await favoriteDbDelete(id);
-      const retryRemaining = await favoriteDbGet(id);
-      if (retryRemaining) {
-        throw new Error("Favorit wurde nach dem Löschen weiterhin gefunden");
+    // Warten, bis eine beim Seitenstart laufende Reparatur vollständig beendet ist.
+    // Dadurch kann sie keinen gelöschten Datensatz mehr aus einer alten Kopie
+    // zurückschreiben.
+    if (favoritesInitializationPromise) {
+      try {
+        await favoritesInitializationPromise;
+      } catch (_) {
+        // Ein Reparaturfehler darf das gezielte Löschen nicht blockieren.
       }
+    }
+
+    const key = String(id);
+    if (favoriteDeleteLocks.has(key)) return;
+    favoriteDeleteLocks.add(key);
+
+    try {
+      await favoriteDbDelete(id);
+
+      // Exakte Kontrolle nur für diesen einen Schlüssel.
+      const remaining = await favoriteDbGet(id);
+      if (remaining) {
+        await favoriteDbDelete(id);
+        const retryRemaining = await favoriteDbGet(id);
+        if (retryRemaining) {
+          throw new Error("Favorit wurde nach dem Löschen weiterhin gefunden");
+        }
+      }
+    } finally {
+      favoriteDeleteLocks.delete(key);
     }
   }
 
@@ -1923,13 +1977,15 @@
 
       remove.addEventListener("click", async (event) => {
         event.stopPropagation();
+        const targetId = item.id;
+        remove.disabled = true;
         try {
-          await deleteFavoriteRecord(item.id);
-          if (typeof item.id === "string" && item.id.startsWith("gallery-photo-")) {
-            galleryFavoriteIds.delete(item.id);
+          await deleteFavoriteRecord(targetId);
+          if (typeof targetId === "string" && targetId.startsWith("gallery-photo-")) {
+            galleryFavoriteIds.delete(targetId);
             syncGalleryFavoriteControls();
           }
-          if (currentFavoriteId === item.id) {
+          if (currentFavoriteId === targetId) {
             currentFavoriteId = null;
             updateFavoriteButton(false);
           }
@@ -1940,6 +1996,7 @@
         } catch (error) {
           console.error(error);
           alert("Der Favorit konnte nicht entfernt werden.");
+          remove.disabled = false;
         }
       });
 
@@ -2071,9 +2128,18 @@
     $("#favoriteDetailLocation").textContent = selectedHasGps
       ? favoriteAddressText(selected)
       : "Kein GPS gespeichert";
-    $("#favoriteDetailCoordinates").textContent = selectedHasGps
-      ? `${favoriteCoordinatesText(selected)} · ${favoriteDirectionText(selected)}`
-      : "Dieses Foto hat keine GPS-Koordinaten.";
+
+    const coordinates = $("#favoriteDetailCoordinates");
+    if (coordinates) {
+      if (selectedHasGps) {
+        coordinates.hidden = false;
+        coordinates.textContent = `${favoriteCoordinatesText(selected)} · ${favoriteDirectionText(selected)}`;
+      } else {
+        // Kein zusätzlicher Hinweistext für Fotos ohne GPS anzeigen.
+        coordinates.textContent = "";
+        coordinates.hidden = true;
+      }
+    }
 
     const locationHint = $("#favoriteDetailLocationHint");
     if (locationHint) {
@@ -2082,17 +2148,25 @@
     }
 
     const removeButton = $("#favoriteDetailRemove");
+    removeButton.disabled = false;
     removeButton.onclick = async () => {
+      const targetId = selected.id;
+      removeButton.disabled = true;
+      removeButton.textContent = "Entfernen…";
+
       try {
-        await deleteFavoriteRecord(selected.id);
-        if (typeof selected.id === "string" && selected.id.startsWith("gallery-photo-")) {
-          galleryFavoriteIds.delete(selected.id);
+        await deleteFavoriteRecord(targetId);
+
+        // Nur genau diesen Favoriten aus dem Galerie-Zwischenspeicher entfernen.
+        if (typeof targetId === "string" && targetId.startsWith("gallery-photo-")) {
+          galleryFavoriteIds.delete(targetId);
           syncGalleryFavoriteControls();
         }
-        if (currentFavoriteId === selected.id) {
+        if (currentFavoriteId === targetId) {
           currentFavoriteId = null;
           updateFavoriteButton(false);
         }
+
         await Promise.all([
           renderFavoriteLibrary(null),
           renderFavoriteLocations(null)
@@ -2100,6 +2174,9 @@
       } catch (error) {
         console.error(error);
         alert("Der Favorit konnte nicht entfernt werden.");
+      } finally {
+        removeButton.disabled = false;
+        removeButton.textContent = "Aus Favoriten entfernen";
       }
     };
   }
@@ -2572,7 +2649,7 @@
     await refreshFavoriteViews();
   }
 
-  initializeLocalFavorites();
+  favoritesInitializationPromise = initializeLocalFavorites();
 
   window.addEventListener(
     "pagehide",
