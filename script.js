@@ -701,9 +701,10 @@
   const FAVORITES_DB = "fotografie-stuttgart-favorites";
   const FAVORITES_STORE = "photos";
   const FAVORITES_VERSION = 1;
-  // Version 2 ergänzt eine automatische Reparatur älterer lokaler Favoriten:
-  // EXIF und GPS werden einmal direkt aus der gespeicherten Bilddatei neu gelesen.
-  const FAVORITES_METADATA_VERSION = 2;
+  // Version 3 ergänzt eine zweite Reparaturstufe für bereits gespeicherte Favoriten:
+  // Auch Favoriten, die schon eine Adresse haben, aber deren GPS-Objekt früher
+  // unvollständig gespeichert wurde, werden erneut direkt aus der Bilddatei geprüft.
+  const FAVORITES_METADATA_VERSION = 3;
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -1464,8 +1465,29 @@
     };
   }
 
+  function hasValidFavoriteGps(item) {
+    return Boolean(
+      item &&
+      item.gps &&
+      Number.isFinite(Number(item.gps.lat)) &&
+      Number.isFinite(Number(item.gps.lon))
+    );
+  }
+
   function needsFavoriteRepair(item) {
-    return Number(item && item.metadataVersion) < FAVORITES_METADATA_VERSION;
+    if (!item) return false;
+
+    // Version 3 wird bewusst auch für bereits reparierte V2-Favoriten ausgeführt.
+    // Damit werden Fälle korrigiert, in denen eine Adresse gespeichert war,
+    // die GPS-Koordinaten im Favoriten aber fehlten oder unvollständig waren.
+    if (Number(item.metadataVersion) < FAVORITES_METADATA_VERSION) {
+      return true;
+    }
+
+    return Boolean(
+      String(item.locationName || "").trim() &&
+      !hasValidFavoriteGps(item)
+    );
   }
 
   async function exifFromFavoriteRecord(item) {
@@ -1500,6 +1522,7 @@
     return !text ||
       text === "Kein GPS gespeichert" ||
       text === "Keine GPS-Daten vorhanden" ||
+      text === "Kein Ort verfügbar" ||
       /^[-+]?\d+(?:\.\d+)?,\s*[-+]?\d+(?:\.\d+)?$/.test(text);
   }
 
@@ -1529,12 +1552,25 @@
       const gps = gpsFromExif(exif);
       if (gps) {
         repaired.gps = gps;
-        if (shouldRefreshLocationName(repaired.locationName)) {
-          try {
-            repaired.locationName = await reverseGeocode(gps.lat, gps.lon);
-          } catch (error) {
-            console.warn("Adresse für reparierten Favoriten konnte nicht ermittelt werden", error);
-          }
+      }
+
+      // Eine bereits vorhandene, gültige GPS-Position bleibt erhalten, falls
+      // die erneute EXIF-Auswertung ausnahmsweise keine GPS-Daten liefern sollte.
+      if (hasValidFavoriteGps(item) && !hasValidFavoriteGps(repaired)) {
+        repaired.gps = item.gps;
+      }
+
+      if (
+        hasValidFavoriteGps(repaired) &&
+        shouldRefreshLocationName(repaired.locationName)
+      ) {
+        try {
+          repaired.locationName = await reverseGeocode(
+            Number(repaired.gps.lat),
+            Number(repaired.gps.lon)
+          );
+        } catch (error) {
+          console.warn("Adresse für reparierten Favoriten konnte nicht ermittelt werden", error);
         }
       }
     }
@@ -1906,14 +1942,14 @@
       title.textContent = item.fileName;
 
       const meta = document.createElement("span");
-      meta.textContent = item.gps
+      meta.textContent = hasValidFavoriteGps(item)
         ? favoriteAddressText(item)
         : `Ohne GPS · ${favoriteDateText(item)}`;
 
       card.append(image, title, meta);
       card.addEventListener("click", () => {
         renderFavoriteLibrary(item.id);
-        if (item.gps) {
+        if (hasValidFavoriteGps(item)) {
           renderFavoriteLocations(item.id);
         }
       });
@@ -1940,24 +1976,26 @@
       metadataContainer.appendChild(row);
     });
 
-    $("#favoriteDetailLocation").textContent = selected.gps
+    const selectedHasGps = hasValidFavoriteGps(selected);
+
+    $("#favoriteDetailLocation").textContent = selectedHasGps
       ? favoriteAddressText(selected)
       : "Kein GPS gespeichert";
-    $("#favoriteDetailCoordinates").textContent = selected.gps
+    $("#favoriteDetailCoordinates").textContent = selectedHasGps
       ? `${favoriteCoordinatesText(selected)} · ${favoriteDirectionText(selected)}`
       : "Dieses Foto hat keine GPS-Koordinaten.";
 
     const mapButton = $("#favoriteDetailMapButton");
     setMapButtonState(
       mapButton,
-      Boolean(selected.gps),
+      selectedHasGps,
       {
         available: "Ort auf Karte ansehen",
         unavailable: "Keine GPS-Daten vorhanden"
       }
     );
     mapButton.onclick = () => {
-      if (!selected.gps) return;
+      if (!selectedHasGps) return;
       setLocationMap(selected);
       renderFavoriteLocations(selected.id);
       const locationSection = $("#orte");
