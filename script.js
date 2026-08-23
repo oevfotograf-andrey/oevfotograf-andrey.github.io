@@ -1773,15 +1773,14 @@
     }
 
     items = items.filter((item) =>
-      item.gps &&
-      Number.isFinite(Number(item.gps.lat)) &&
-      Number.isFinite(Number(item.gps.lon))
+      hasValidFavoriteGps(item) ||
+      Boolean(String(item.locationName || "").trim())
     ).sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
 
     container.innerHTML = "";
 
     if (!items.length) {
-      container.innerHTML = '<p class="favorite-empty">Noch keine Fotos mit GPS in den lokalen Favoriten gespeichert.</p>';
+      container.innerHTML = '<p class="favorite-empty">Noch keine Fotos mit gespeichertem Aufnahmeort in den lokalen Favoriten vorhanden.</p>';
       setLocationMap(null);
       return;
     }
@@ -1977,26 +1976,33 @@
     });
 
     const selectedHasGps = hasValidFavoriteGps(selected);
+    const selectedHasStoredLocation = Boolean(
+      selectedHasGps || String(selected.locationName || "").trim()
+    );
 
-    $("#favoriteDetailLocation").textContent = selectedHasGps
+    $("#favoriteDetailLocation").textContent = selectedHasStoredLocation
       ? favoriteAddressText(selected)
       : "Kein GPS gespeichert";
     $("#favoriteDetailCoordinates").textContent = selectedHasGps
       ? `${favoriteCoordinatesText(selected)} · ${favoriteDirectionText(selected)}`
-      : "Dieses Foto hat keine GPS-Koordinaten.";
+      : selectedHasStoredLocation
+        ? "Der gespeicherte Aufnahmeort kann in „03 / Aufnahmeorte“ nachgesehen werden."
+        : "Dieses Foto hat keine GPS-Koordinaten.";
 
     const mapButton = $("#favoriteDetailMapButton");
     setMapButtonState(
       mapButton,
-      selectedHasGps,
+      selectedHasStoredLocation,
       {
-        available: "Ort auf Karte ansehen",
+        available: "Standort in Aufnahmeorte ansehen",
         unavailable: "Keine GPS-Daten vorhanden"
       }
     );
     mapButton.onclick = () => {
-      if (!selectedHasGps) return;
-      setLocationMap(selected);
+      if (!selectedHasStoredLocation) return;
+      if (selectedHasGps) {
+        setLocationMap(selected);
+      }
       renderFavoriteLocations(selected.id);
       const locationSection = $("#orte");
       if (locationSection) {
