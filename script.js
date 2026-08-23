@@ -201,7 +201,10 @@
   let galleryFavoriteBusy = false;
 
   function galleryFavoriteId(photo) {
-    return `gallery-photo-${photo.id}`;
+    const fileKey = String(photo?.file || photo?.id || "")
+      .trim()
+      .toLowerCase();
+    return `gallery-photo-file-${encodeURIComponent(fileKey)}`;
   }
 
   function isGalleryFavorite(photo) {
@@ -700,7 +703,7 @@
 
   const FAVORITES_DB = "fotografie-stuttgart-favorites";
   const FAVORITES_STORE = "photos";
-  const FAVORITES_VERSION = 1;
+  const FAVORITES_VERSION = 2;
 
   const TAGS = {
     0x010E: "ImageDescription",
@@ -1267,6 +1270,11 @@
   // -----------------------------
   // Lokale Favoriten / IndexedDB
   // -----------------------------
+  // Jeder Favorit besitzt genau eine stabile ID. Für hochgeladene EXIF-Fotos
+  // bleibt die bestehende Dateisignatur erhalten, damit bereits gespeicherte
+  // Favoriten weiterhin gefunden und entfernt werden können. Galeriefotos
+  // verwenden dagegen den Dateinamen statt der redaktionellen photo.id:
+  // dadurch bleibt der Favorit auch bei späteren Änderungen der Sortierung stabil.
   function favoriteIdFor(file) {
     return [file.name, file.size, file.lastModified].join("__");
   }
@@ -1287,48 +1295,106 @@
         }
       };
 
+      request.onblocked = () => {
+        console.warn("Favoriten-Datenbank ist in einem anderen Tab noch geöffnet.");
+      };
+
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => reject(request.error || new Error("Favoriten-Datenbank konnte nicht geöffnet werden"));
+    });
+  }
+
+  async function favoriteDbRun(mode, operation) {
+    const db = await openFavoritesDb();
+
+    return new Promise((resolve, reject) => {
+      let result;
+      let settled = false;
+
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        try { db.close(); } catch (_) {}
+        callback(value);
+      };
+
+      let tx;
+      try {
+        tx = db.transaction(FAVORITES_STORE, mode);
+        const store = tx.objectStore(FAVORITES_STORE);
+        result = operation(store, tx);
+      } catch (error) {
+        finish(reject, error);
+        return;
+      }
+
+      tx.oncomplete = () => finish(resolve, result);
+      tx.onerror = () => finish(reject, tx.error || new Error("Favoriten-Transaktion fehlgeschlagen"));
+      tx.onabort = () => finish(reject, tx.error || new Error("Favoriten-Transaktion wurde abgebrochen"));
     });
   }
 
   async function favoriteDbGet(id) {
     const db = await openFavoritesDb();
+
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(FAVORITES_STORE, "readonly");
-      const request = tx.objectStore(FAVORITES_STORE).get(id);
-      request.onsuccess = () => { resolve(request.result || null); db.close(); };
-      request.onerror = () => { reject(request.error); db.close(); };
+      let settled = false;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        try { db.close(); } catch (_) {}
+        callback(value);
+      };
+
+      let tx;
+      try {
+        tx = db.transaction(FAVORITES_STORE, "readonly");
+        const request = tx.objectStore(FAVORITES_STORE).get(id);
+        request.onsuccess = () => finish(resolve, request.result || null);
+        request.onerror = () => finish(reject, request.error || new Error("Favorit konnte nicht gelesen werden"));
+        tx.onerror = () => finish(reject, tx.error || new Error("Favoriten-Lesevorgang fehlgeschlagen"));
+      } catch (error) {
+        finish(reject, error);
+      }
     });
   }
 
   async function favoriteDbGetAll() {
     const db = await openFavoritesDb();
+
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(FAVORITES_STORE, "readonly");
-      const request = tx.objectStore(FAVORITES_STORE).getAll();
-      request.onsuccess = () => { resolve(request.result || []); db.close(); };
-      request.onerror = () => { reject(request.error); db.close(); };
+      let settled = false;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        try { db.close(); } catch (_) {}
+        callback(value);
+      };
+
+      let tx;
+      try {
+        tx = db.transaction(FAVORITES_STORE, "readonly");
+        const request = tx.objectStore(FAVORITES_STORE).getAll();
+        request.onsuccess = () => finish(resolve, request.result || []);
+        request.onerror = () => finish(reject, request.error || new Error("Favoriten konnten nicht gelesen werden"));
+        tx.onerror = () => finish(reject, tx.error || new Error("Favoriten-Lesevorgang fehlgeschlagen"));
+      } catch (error) {
+        finish(reject, error);
+      }
     });
   }
 
-  async function favoriteDbPut(record) {
-    const db = await openFavoritesDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FAVORITES_STORE, "readwrite");
-      tx.objectStore(FAVORITES_STORE).put(record);
-      tx.oncomplete = () => { resolve(); db.close(); };
-      tx.onerror = () => { reject(tx.error); db.close(); };
+  function favoriteDbPut(record) {
+    return favoriteDbRun("readwrite", (store) => {
+      store.put(record);
+      return true;
     });
   }
 
-  async function favoriteDbDelete(id) {
-    const db = await openFavoritesDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(FAVORITES_STORE, "readwrite");
-      tx.objectStore(FAVORITES_STORE).delete(id);
-      tx.oncomplete = () => { resolve(); db.close(); };
-      tx.onerror = () => { reject(tx.error); db.close(); };
+  function favoriteDbDelete(id) {
+    return favoriteDbRun("readwrite", (store) => {
+      store.delete(id);
+      return true;
     });
   }
 
@@ -1341,11 +1407,68 @@
     );
   }
 
+  function galleryPhotoFromLegacyRecord(item) {
+    if (!item) return null;
+
+    const original = String(item.originalFileName || "").trim().toLowerCase();
+    if (original) {
+      return photos.find((photo) => String(photo.file).toLowerCase() === original) || null;
+    }
+
+    const fileName = String(item.fileName || "").trim();
+    return photos.find((photo) =>
+      photo.title === fileName ||
+      photo.file === fileName
+    ) || null;
+  }
+
+  async function migrateLegacyFavorites() {
+    let items = [];
+    try {
+      items = await favoriteDbGetAll();
+    } catch (error) {
+      console.warn("Favoriten konnten nicht migriert werden", error);
+      return;
+    }
+
+    for (const item of items) {
+      if (!item || typeof item.id !== "string") continue;
+
+      const looksLikeLegacyGallery =
+        item.source === "gallery" ||
+        item.id.startsWith("gallery-photo-");
+
+      if (!looksLikeLegacyGallery) continue;
+
+      const photo = galleryPhotoFromLegacyRecord(item);
+      if (!photo) continue;
+
+      const stableId = galleryFavoriteId(photo);
+      if (item.id === stableId) continue;
+
+      const existing = await favoriteDbGet(stableId);
+      if (!existing) {
+        await favoriteDbPut({
+          ...item,
+          id: stableId,
+          source: "gallery",
+          photoId: photo.id,
+          originalFileName: photo.file
+        });
+      }
+
+      await favoriteDbDelete(item.id);
+    }
+  }
+
   async function removeFavoriteRecord(id, options = {}) {
     if (!id) {
       throw new Error("Favorit-ID fehlt");
     }
 
+    // Die Löschung selbst ist die kritische Operation. Ein Fehler beim
+    // anschließenden Neuzeichnen darf niemals als „konnte nicht entfernt
+    // werden“ gemeldet werden, wenn der Datensatz bereits gelöscht wurde.
     await favoriteDbDelete(id);
 
     const remaining = await favoriteDbGet(id);
@@ -1366,18 +1489,28 @@
     const nextLibraryId = options.librarySelectedId || null;
     const nextLocationId = options.locationSelectedId || null;
 
-    await renderFavoriteLibrary(nextLibraryId);
-    await renderFavoriteLocations(nextLocationId);
+    try {
+      await refreshFavoriteViews(nextLibraryId, nextLocationId);
+    } catch (error) {
+      // Die Datenbank wurde bereits erfolgreich geändert. Die Ansichten können
+      // beim nächsten Rendern sicher neu aufgebaut werden.
+      console.warn("Favoritenansichten konnten nach dem Entfernen nicht sofort aktualisiert werden", error);
+    }
+
+    return true;
   }
 
   async function refreshGalleryFavoriteState() {
     try {
       const items = await favoriteDbGetAll();
       galleryFavoriteIds.clear();
+
       items.forEach((item) => {
+        if (!item) return;
+
         if (
-          typeof item.id === "string" &&
-          item.id.startsWith("gallery-photo-")
+          item.source === "gallery" ||
+          (typeof item.id === "string" && item.id.startsWith("gallery-photo-file-"))
         ) {
           galleryFavoriteIds.add(item.id);
         }
@@ -1509,9 +1642,7 @@
 
     try {
       if (isGalleryFavorite(photo)) {
-        await favoriteDbDelete(id);
-        galleryFavoriteIds.delete(id);
-        await refreshFavoriteViews(null, null);
+        await removeFavoriteRecord(id);
       } else {
         const record = await buildGalleryFavoriteRecord(photo);
         await favoriteDbPut(record);
@@ -1832,27 +1963,28 @@
     const removeButton = $("#favoriteDetailRemove");
     const actionHint = $("#favoriteDetailActionHint");
 
-    removeButton.hidden = selectedHasGps;
+    // Jeder Favorit kann direkt aus seiner Detailansicht entfernt werden –
+    // unabhängig davon, ob GPS vorhanden ist.
+    removeButton.hidden = false;
     if (actionHint) {
-      actionHint.classList.toggle("hidden", !selectedHasGps);
+      actionHint.classList.add("hidden");
     }
 
-    if (!selectedHasGps) {
-      removeButton.onclick = async () => {
-        removeButton.disabled = true;
-        removeButton.textContent = "Entfernen…";
-        try {
-          await removeFavoriteRecord(selected.id);
-        } catch (error) {
-          console.error(error);
-          alert("Der Favorit konnte nicht entfernt werden.");
-          removeButton.disabled = false;
-          removeButton.textContent = "Aus Favoriten entfernen";
-        }
-      };
-    } else {
-      removeButton.onclick = null;
-    }
+    removeButton.disabled = false;
+    removeButton.textContent = "Aus Favoriten entfernen";
+    removeButton.onclick = async () => {
+      removeButton.disabled = true;
+      removeButton.textContent = "Entfernen…";
+
+      try {
+        await removeFavoriteRecord(selected.id);
+      } catch (error) {
+        console.error(error);
+        alert("Der Favorit konnte nicht entfernt werden.");
+        removeButton.disabled = false;
+        removeButton.textContent = "Aus Favoriten entfernen";
+      }
+    };
   }
 
   async function saveCurrentFavorite() {
@@ -1875,15 +2007,7 @@
 
     try {
       if (alreadySaved) {
-        await favoriteDbDelete(id);
-        const stillSaved = await favoriteDbGet(id);
-        if (stillSaved) {
-          throw new Error("Favorit wurde nicht entfernt");
-        }
-
-        currentFavoriteId = id;
-        updateFavoriteButton(false);
-        await refreshFavoriteViews(null, null);
+        await removeFavoriteRecord(id);
         return;
       }
 
@@ -2312,8 +2436,17 @@
     favoriteButton.addEventListener("click", saveCurrentFavorite);
   }
 
-  renderFavoriteLocations();
-  renderFavoriteLibrary();
+  async function initializeFavorites() {
+    try {
+      await migrateLegacyFavorites();
+    } catch (error) {
+      console.warn("Favoritenmigration wurde übersprungen", error);
+    }
+
+    await refreshGalleryFavoriteState();
+    await refreshFavoriteViews();
+  }
+
   updateFavoriteButton(false);
 
   window.addEventListener(
@@ -2332,5 +2465,11 @@
   $("#year").textContent =
     new Date().getFullYear();
 
-  refreshGalleryFavoriteState().finally(renderGallery);
+  initializeFavorites()
+    .catch((error) => {
+      console.warn("Favoriten konnten nicht vollständig initialisiert werden", error);
+    })
+    .finally(() => {
+      renderGallery();
+    });
 })();

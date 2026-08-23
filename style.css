@@ -184,6 +184,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .favorite-location-card span{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.35}
 .favorite-remove{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
 .favorite-remove:hover{color:var(--text);border-color:var(--accent)}
+.favorite-remove:disabled{opacity:.55;cursor:wait;pointer-events:none}
 .map-preview{min-height:430px;background:#d8d8d2;position:relative;overflow:hidden}
 .location-map-panel{background:var(--surface-2)}
 .location-map-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;padding:30px;text-align:center;color:var(--text);background:radial-gradient(circle at center,rgba(211,255,71,.10),transparent 42%),var(--surface-2)}
@@ -581,6 +582,11 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .favorite-detail-remove:hover{
   color:var(--text);
   border-color:var(--accent);
+}
+.favorite-detail-remove:disabled{
+  opacity:.58;
+  cursor:wait;
+  pointer-events:none;
 }
 
 .favorite-detail-action-hint{
