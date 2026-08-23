@@ -170,7 +170,7 @@
             <button id="favoriteButton" class="button ghost" type="button" disabled>☆ Zu Favoriten speichern</button>
           </div>
 
-          <p class="privacy-note">Die Datei wird für diese Funktion nicht auf den Server hochgeladen. EXIF-Daten und Favoriten bleiben lokal in deinem Browser. Bereits gespeicherte Favoriten können nach einem Website-Update einmal automatisch erneut aus der lokal gespeicherten Bilddatei ausgelesen werden, damit fehlende EXIF- oder GPS-Daten ergänzt werden. Nur wenn GPS vorhanden ist, wird für die Straßenbezeichnung die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
+          <p class="privacy-note">Die Datei wird für diese Funktion nicht auf den Server hochgeladen. EXIF-Daten und Favoriten bleiben lokal in deinem Browser. Nur wenn GPS vorhanden ist, wird für die Straßenbezeichnung die gefundene GPS-Position an einen Geocoding-Dienst abgefragt.</p>
         </div>
       </div>
     </section>
@@ -246,6 +246,7 @@
                 <h3 id="favoriteDetailTitle">—</h3>
               </div>
               <button id="favoriteDetailRemove" class="favorite-detail-remove" type="button">Aus Favoriten entfernen</button>
+              <p id="favoriteDetailActionHint" class="favorite-detail-action-hint hidden">Dieses Foto mit GPS kannst du über „03 / Aufnahmeorte“ aus den Favoriten entfernen.</p>
             </div>
 
             <div id="favoriteDetailMetadata" class="favorite-detail-metadata"></div>
@@ -254,9 +255,9 @@
               <div>
                 <span class="eyebrow">AUFNAHMEORT</span>
                 <strong id="favoriteDetailLocation">Kein GPS gespeichert</strong>
-                <span id="favoriteDetailCoordinates" hidden></span>
+                <span id="favoriteDetailCoordinates">—</span>
               </div>
-              <p id="favoriteDetailLocationHint" class="favorite-detail-location-hint">Sie können den Standort des Fotos in der Kategorie „03 / Aufnahmeorte“ nachsehen.</p>
+              <button id="favoriteDetailMapButton" class="button primary" type="button" disabled aria-disabled="true">Kein Ort verfügbar</button>
             </div>
           </div>
         </div>
