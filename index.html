@@ -141,23 +141,23 @@
           </div>
 
           <div class="metadata-grid">
-            <div><span>Kamera</span><strong id="camera">—</strong></div>
-            <div><span>Objektiv</span><strong id="lens">—</strong></div>
-            <div><span>Verschlusszeit</span><strong id="shutter">—</strong></div>
-            <div><span>Blende</span><strong id="aperture">—</strong></div>
-            <div><span>ISO</span><strong id="iso">—</strong></div>
-            <div><span>Brennweite</span><strong id="focal">—</strong></div>
-            <div><span>Autor</span><strong id="author">—</strong></div>
-            <div><span>Urheberrecht</span><strong id="copyright">—</strong></div>
-            <div><span>Aufnahmedatum</span><strong id="dateTaken">—</strong></div>
-            <div><span>Ausrichtung</span><strong id="direction">—</strong></div>
+            <div><span>Kamera</span><strong id="camera">Nicht vorhanden</strong></div>
+            <div><span>Objektiv</span><strong id="lens">Nicht vorhanden</strong></div>
+            <div><span>Verschlusszeit</span><strong id="shutter">Nicht vorhanden</strong></div>
+            <div><span>Blende</span><strong id="aperture">Nicht vorhanden</strong></div>
+            <div><span>ISO</span><strong id="iso">Nicht vorhanden</strong></div>
+            <div><span>Brennweite</span><strong id="focal">Nicht vorhanden</strong></div>
+            <div><span>Autor</span><strong id="author">Nicht vorhanden</strong></div>
+            <div><span>Urheberrecht</span><strong id="copyright">Nicht vorhanden</strong></div>
+            <div><span>Aufnahmedatum</span><strong id="dateTaken">Nicht vorhanden</strong></div>
+            <div><span>Ausrichtung</span><strong id="direction">Nicht vorhanden</strong></div>
           </div>
 
           <div class="gps-box">
             <div>
               <span class="eyebrow">GPS / AUFNAHMEORT</span>
               <h3 id="locationName">Kein GPS gefunden</h3>
-              <p id="coordinates">—</p>
+              <p id="coordinates"></p>
             </div>
             <button id="mapButton" class="button primary" type="button" disabled aria-disabled="true">Kein Ort verfügbar</button>
           </div>
@@ -206,8 +206,8 @@
           </div>
           <iframe id="locationMapFrame" class="location-map-frame hidden" title="Aufnahmeorte aus lokalen Favoriten" loading="lazy"></iframe>
           <div id="locationMapCaption" class="location-map-caption hidden">
-            <strong id="locationMapTitle">—</strong>
-            <span id="locationMapMeta">—</span>
+            <strong id="locationMapTitle"></strong>
+            <span id="locationMapMeta"></span>
           </div>
         </div>
       </div>
@@ -243,10 +243,10 @@
             <div class="favorite-detail-title-row">
               <div>
                 <span class="eyebrow">AUSGEWÄHLTER FAVORIT</span>
-                <h3 id="favoriteDetailTitle">—</h3>
+                <h3 id="favoriteDetailTitle"></h3>
               </div>
               <button id="favoriteDetailRemove" class="favorite-detail-remove" type="button">Aus Favoriten entfernen</button>
-              <p id="favoriteDetailActionHint" class="favorite-detail-action-hint hidden">Favoriten können direkt aus dieser Detailansicht entfernt werden.</p>
+              <p id="favoriteDetailActionHint" class="favorite-detail-action-hint hidden" hidden></p>
             </div>
 
             <div id="favoriteDetailMetadata" class="favorite-detail-metadata"></div>
@@ -255,9 +255,10 @@
               <div>
                 <span class="eyebrow">AUFNAHMEORT</span>
                 <strong id="favoriteDetailLocation">Kein GPS gespeichert</strong>
-                <span id="favoriteDetailCoordinates">—</span>
+                <span id="favoriteDetailCoordinates"></span>
               </div>
               <button id="favoriteDetailMapButton" class="button primary" type="button" disabled aria-disabled="true">Kein Ort verfügbar</button>
+              <p id="favoriteDetailLocationHint" class="favorite-detail-location-hint" hidden></p>
             </div>
           </div>
         </div>

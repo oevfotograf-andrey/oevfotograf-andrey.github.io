@@ -648,6 +648,15 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   font-size:11px;
 }
 .favorite-detail-location .button{white-space:nowrap}
+.favorite-detail-location-hint{
+  flex:0 1 360px;
+  margin:0;
+  color:var(--text);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.5;
+  text-align:right;
+}
 @media (max-width:900px){
   .favorites-library-head{align-items:flex-start;flex-direction:column}
   .favorite-detail{grid-template-columns:1fr}
@@ -667,6 +676,7 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
   .favorite-detail-title-row{flex-direction:column}
   .favorite-detail-remove{width:100%}
   .favorite-detail-action-hint{width:100%;text-align:left}
+  .favorite-detail-location-hint{width:100%;text-align:left}
   .favorite-detail-metadata{grid-template-columns:1fr}
   .favorite-detail-location{align-items:stretch;flex-direction:column}
   .favorite-detail-location .button{width:100%}

@@ -663,6 +663,8 @@
   let currentLocationName = "";
   let previewObjectUrl = null;
   let analysisToken = 0;
+  let favoriteLibraryRenderToken = 0;
+  let favoriteLocationRenderToken = 0;
 
   function clearInlineMap() {
     const existing = document.getElementById("mapFrame");
@@ -1101,7 +1103,7 @@
       ? value
           .toFixed(digits)
           .replace(/\.?0+$/, "")
-      : "—";
+      : "Nicht vorhanden";
   }
 
   function formatExposure(value) {
@@ -1109,7 +1111,7 @@
       !Number.isFinite(value) ||
       value <= 0
     ) {
-      return "—";
+      return "Nicht vorhanden";
     }
 
     if (value >= 1) {
@@ -1122,13 +1124,13 @@
   function formatFocal(value) {
     return Number.isFinite(value)
       ? `${formatNumber(value, 1)} mm`
-      : "—";
+      : "Nicht vorhanden";
   }
 
   function formatAperture(value) {
     return Number.isFinite(value)
       ? `f/${formatNumber(value, 1)}`
-      : "—";
+      : "Nicht vorhanden";
   }
 
   function dmsToDecimal(dms, ref) {
@@ -1170,7 +1172,7 @@
 
   function directionName(degrees) {
     if (!Number.isFinite(degrees)) {
-      return "—";
+      return "Nicht vorhanden";
     }
 
     const dirs = [
@@ -1195,7 +1197,7 @@
     const el = document.getElementById(id);
 
     if (el) {
-      el.textContent = value || "—";
+      el.textContent = value || "Nicht vorhanden";
     }
   }
 
@@ -1721,12 +1723,14 @@
   }
 
   async function renderFavoriteLocations(selectedId = null) {
+    const renderToken = ++favoriteLocationRenderToken;
     const container = $("#favoriteLocations");
     if (!container) return;
 
     let items = [];
     try {
       items = await favoriteDbGetAll();
+      if (renderToken !== favoriteLocationRenderToken) return;
     } catch (error) {
       console.warn("Favoriten konnten nicht geladen werden", error);
       container.innerHTML = '<p class="favorite-empty">Lokaler Favoritenspeicher ist in diesem Browser nicht verfügbar.</p>';
@@ -1738,6 +1742,7 @@
       .filter(hasFavoriteGps)
       .sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
 
+    if (renderToken !== favoriteLocationRenderToken) return;
     container.innerHTML = "";
 
     if (!items.length) {
@@ -1851,6 +1856,7 @@
   }
 
   async function renderFavoriteLibrary(selectedId = null) {
+    const renderToken = ++favoriteLibraryRenderToken;
     const strip = $("#favoriteLibrary");
     const count = $("#favoriteLibraryCount");
     const detail = $("#favoriteDetail");
@@ -1859,6 +1865,7 @@
     let items = [];
     try {
       items = await favoriteDbGetAll();
+      if (renderToken !== favoriteLibraryRenderToken) return;
     } catch (error) {
       console.warn("Favoriten konnten nicht geladen werden", error);
       strip.innerHTML = '<p class="favorite-empty">Lokaler Favoritenspeicher ist in diesem Browser nicht verfügbar.</p>';
@@ -1868,6 +1875,7 @@
     }
 
     items = items.sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+    if (renderToken !== favoriteLibraryRenderToken) return;
     count.textContent = `${items.length} ${items.length === 1 ? "Foto" : "Fotos"}`;
     strip.innerHTML = "";
 
@@ -1923,7 +1931,11 @@
       const name = document.createElement("span");
       name.textContent = label;
       const value = document.createElement("strong");
-      value.textContent = (selected.metadata && selected.metadata[key]) || "Nicht vorhanden";
+      const rawValue = selected.metadata && selected.metadata[key];
+      value.textContent =
+        rawValue && String(rawValue).trim() !== "—"
+          ? rawValue
+          : "Nicht vorhanden";
       row.append(name, value);
       metadataContainer.appendChild(row);
     });
@@ -1942,49 +1954,76 @@
     }
 
     const mapButton = $("#favoriteDetailMapButton");
-    setMapButtonState(
-      mapButton,
-      selectedHasGps,
-      {
-        available: "Ort auf Karte ansehen",
-        unavailable: "Kein Ort verfügbar"
+    const locationHint = $("#favoriteDetailLocationHint");
+
+    if (selectedHasGps) {
+      // GPS-Fotos werden ausschließlich über „03 / Aufnahmeorte“ verwaltet.
+      // Die Hinweise werden bei jedem Rendern aus den gespeicherten GPS-Daten
+      // abgeleitet und bleiben deshalb auch nach einem Seiten-Reload erhalten.
+      mapButton.hidden = true;
+      mapButton.disabled = true;
+      mapButton.setAttribute("aria-disabled", "true");
+      mapButton.onclick = null;
+
+      if (locationHint) {
+        locationHint.hidden = false;
+        locationHint.textContent =
+          "Du kannst den Standort des Fotos in der Kategorie „03 / Aufnahmeorte“ nachsehen.";
       }
-    );
-    mapButton.onclick = () => {
-      if (!selectedHasGps) return;
-      setLocationMap(selected);
-      renderFavoriteLocations(selected.id);
-      const locationSection = $("#orte");
-      if (locationSection) {
-        locationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      if (locationHint) {
+        locationHint.hidden = true;
+        locationHint.textContent = "";
       }
-    };
+
+      setMapButtonState(
+        mapButton,
+        false,
+        { unavailable: "Kein Ort verfügbar" }
+      );
+      mapButton.hidden = false;
+      mapButton.onclick = null;
+    }
 
     const removeButton = $("#favoriteDetailRemove");
     const actionHint = $("#favoriteDetailActionHint");
 
-    // Jeder Favorit kann direkt aus seiner Detailansicht entfernt werden –
-    // unabhängig davon, ob GPS vorhanden ist.
-    removeButton.hidden = false;
-    if (actionHint) {
-      actionHint.classList.add("hidden");
-    }
-
-    removeButton.disabled = false;
-    removeButton.textContent = "Aus Favoriten entfernen";
-    removeButton.onclick = async () => {
+    if (selectedHasGps) {
+      removeButton.hidden = true;
       removeButton.disabled = true;
-      removeButton.textContent = "Entfernen…";
+      removeButton.onclick = null;
 
-      try {
-        await removeFavoriteRecord(selected.id);
-      } catch (error) {
-        console.error(error);
-        alert("Der Favorit konnte nicht entfernt werden.");
-        removeButton.disabled = false;
-        removeButton.textContent = "Aus Favoriten entfernen";
+      if (actionHint) {
+        actionHint.hidden = false;
+        actionHint.classList.remove("hidden");
+        actionHint.textContent =
+          "Dieses Foto mit GPS kannst du über „03 / Aufnahmeorte“ aus den Favoriten entfernen.";
       }
-    };
+    } else {
+      removeButton.hidden = false;
+      removeButton.disabled = false;
+      removeButton.textContent = "Aus Favoriten entfernen";
+
+      if (actionHint) {
+        actionHint.hidden = true;
+        actionHint.classList.add("hidden");
+        actionHint.textContent = "";
+      }
+
+      removeButton.onclick = async () => {
+        removeButton.disabled = true;
+        removeButton.textContent = "Entfernen…";
+
+        try {
+          await removeFavoriteRecord(selected.id);
+        } catch (error) {
+          console.error(error);
+          alert("Der Favorit konnte nicht entfernt werden.");
+          removeButton.disabled = false;
+          removeButton.textContent = "Aus Favoriten entfernen";
+        }
+      };
+    }
   }
 
   async function saveCurrentFavorite() {
