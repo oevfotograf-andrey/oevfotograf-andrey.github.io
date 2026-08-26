@@ -666,6 +666,51 @@
   let favoriteLibraryRenderToken = 0;
   let favoriteLocationRenderToken = 0;
 
+  // Ein einziger In-Memory-Schnappschuss verhindert, dass die beiden
+  // Favoritenansichten bei jedem Klick gleichzeitig neue IndexedDB-Lesevorgänge
+  // starten. IndexedDB bleibt der dauerhafte Speicher; die Oberfläche rendert
+  // ausschließlich aus diesem gemeinsamen Cache.
+  let favoriteCache = [];
+  let favoriteCacheReady = false;
+  let favoriteMutation = Promise.resolve();
+
+  async function loadFavoriteCache(force = false) {
+    if (favoriteCacheReady && !force) {
+      return favoriteCache.slice();
+    }
+
+    const items = await favoriteDbGetAll();
+    favoriteCache = Array.isArray(items) ? items.slice() : [];
+    favoriteCacheReady = true;
+    return favoriteCache.slice();
+  }
+
+  function favoriteCacheSnapshot() {
+    return favoriteCache.slice();
+  }
+
+  function upsertFavoriteCache(record) {
+    if (!record || !record.id) return;
+    const index = favoriteCache.findIndex((item) => item && item.id === record.id);
+    if (index === -1) {
+      favoriteCache.push(record);
+    } else {
+      favoriteCache[index] = record;
+    }
+    favoriteCacheReady = true;
+  }
+
+  function deleteFavoriteFromCache(id) {
+    favoriteCache = favoriteCache.filter((item) => item && item.id !== id);
+    favoriteCacheReady = true;
+  }
+
+  function enqueueFavoriteMutation(task) {
+    const run = favoriteMutation.then(task, task);
+    favoriteMutation = run.catch(() => {});
+    return run;
+  }
+
   function clearInlineMap() {
     const existing = document.getElementById("mapFrame");
     if (existing) existing.remove();
@@ -1394,9 +1439,38 @@
   }
 
   function favoriteDbDelete(id) {
-    return favoriteDbRun("readwrite", (store) => {
-      store.delete(id);
-      return true;
+    return new Promise(async (resolve, reject) => {
+      let db;
+
+      try {
+        db = await openFavoritesDb();
+        const tx = db.transaction(FAVORITES_STORE, "readwrite");
+        const store = tx.objectStore(FAVORITES_STORE);
+        const request = store.delete(id);
+
+        request.onerror = () => {
+          try { db.close(); } catch (_) {}
+          reject(request.error || new Error("Favorit konnte nicht entfernt werden"));
+        };
+
+        tx.oncomplete = () => {
+          try { db.close(); } catch (_) {}
+          resolve(true);
+        };
+
+        tx.onerror = () => {
+          try { db.close(); } catch (_) {}
+          reject(tx.error || new Error("Favorit konnte nicht entfernt werden"));
+        };
+
+        tx.onabort = () => {
+          try { db.close(); } catch (_) {}
+          reject(tx.error || new Error("Favoriten-Löschung wurde abgebrochen"));
+        };
+      } catch (error) {
+        try { if (db) db.close(); } catch (_) {}
+        reject(error);
+      }
     });
   }
 
@@ -1591,50 +1665,49 @@
       throw new Error("Favorit-ID fehlt");
     }
 
-    // Die Löschung selbst ist die kritische Operation. Ein Fehler beim
-    // anschließenden Neuzeichnen darf niemals als „konnte nicht entfernt
-    // werden“ gemeldet werden, wenn der Datensatz bereits gelöscht wurde.
-    await favoriteDbDelete(id);
+    // Pro Klick gibt es genau eine Löschtransaktion. Danach wird zuerst der
+    // gemeinsame Cache aktualisiert. Die sichtbare Oberfläche hängt also nicht
+    // mehr davon ab, dass zwei getrennte IndexedDB-Lesevorgänge fertig werden.
+    return enqueueFavoriteMutation(async () => {
+      await favoriteDbDelete(id);
+      deleteFavoriteFromCache(id);
 
-    const remaining = await favoriteDbGet(id);
-    if (remaining) {
-      throw new Error("Favorit wurde nicht entfernt");
-    }
+      if (typeof id === "string" && id.startsWith("gallery-photo-")) {
+        galleryFavoriteIds.delete(id);
+        syncGalleryFavoriteControls();
+      }
 
-    if (typeof id === "string" && id.startsWith("gallery-photo-")) {
-      galleryFavoriteIds.delete(id);
-      syncGalleryFavoriteControls();
-    }
+      if (currentFavoriteId === id) {
+        currentFavoriteId = null;
+        updateFavoriteButton(false);
+      }
 
-    if (currentFavoriteId === id) {
-      currentFavoriteId = null;
-      updateFavoriteButton(false);
-    }
+      const remainingItems = favoriteCacheSnapshot();
+      const nextFallbackId = remainingItems.length
+        ? remainingItems
+            .slice()
+            .sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0))[0].id
+        : null;
 
-    const remainingItems = await favoriteDbGetAll();
-    const nextFallbackId = remainingItems.length
-      ? remainingItems.sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0))[0].id
-      : null;
+      const nextLibraryId =
+        options.librarySelectedId || nextFallbackId;
+      const nextLocationId =
+        options.locationSelectedId || nextFallbackId;
 
-    const nextLibraryId =
-      options.librarySelectedId || nextFallbackId;
-    const nextLocationId =
-      options.locationSelectedId || nextFallbackId;
+      // Sofort aus dem gemeinsamen Cache neu zeichnen. Kein zusätzlicher
+      // Datenbank-Check und kein Warten auf die Karte.
+      refreshFavoriteViews(nextLibraryId, nextLocationId)
+        .catch((error) => {
+          console.warn("Favoritenansichten konnten nach dem Entfernen nicht sofort aktualisiert werden", error);
+        });
 
-    try {
-      await refreshFavoriteViews(nextLibraryId, nextLocationId);
-    } catch (error) {
-      // Die Datenbank wurde bereits erfolgreich geändert. Die Ansichten können
-      // beim nächsten Rendern sicher neu aufgebaut werden.
-      console.warn("Favoritenansichten konnten nach dem Entfernen nicht sofort aktualisiert werden", error);
-    }
-
-    return true;
+      return true;
+    });
   }
 
   async function refreshGalleryFavoriteState() {
     try {
-      const items = await favoriteDbGetAll();
+      const items = await loadFavoriteCache();
       galleryFavoriteIds.clear();
 
       items.forEach((item) => {
@@ -1872,7 +1945,7 @@
 
     let items = [];
     try {
-      items = await favoriteDbGetAll();
+      items = await loadFavoriteCache();
       if (renderToken !== favoriteLocationRenderToken) return;
     } catch (error) {
       console.warn("Favoriten konnten nicht geladen werden", error);
@@ -1942,6 +2015,8 @@
 
       remove.addEventListener("click", async (event) => {
         event.stopPropagation();
+        if (remove.dataset.busy === "true") return;
+        remove.dataset.busy = "true";
         remove.disabled = true;
         remove.textContent = "…";
         try {
@@ -1949,6 +2024,7 @@
         } catch (error) {
           console.error(error);
           alert("Der Favorit konnte nicht entfernt werden.");
+          remove.dataset.busy = "false";
           remove.disabled = false;
           remove.textContent = "×";
         }
@@ -2008,7 +2084,7 @@
 
     let items = [];
     try {
-      items = await favoriteDbGetAll();
+      items = await loadFavoriteCache();
       if (renderToken !== favoriteLibraryRenderToken) return;
     } catch (error) {
       console.warn("Favoriten konnten nicht geladen werden", error);
@@ -2140,9 +2216,12 @@
       removeButton.removeAttribute("hidden");
       removeButton.hidden = false;
       removeButton.classList.remove("hidden");
+      removeButton.dataset.busy = "false";
       removeButton.disabled = false;
       removeButton.textContent = "Aus Favoriten entfernen";
       removeButton.onclick = async () => {
+        if (removeButton.dataset.busy === "true") return;
+        removeButton.dataset.busy = "true";
         removeButton.disabled = true;
         removeButton.textContent = "Entfernen…";
 
@@ -2150,6 +2229,7 @@
           await removeFavoriteRecord(selected.id);
         } catch (error) {
           console.error(error);
+          removeButton.dataset.busy = "false";
           removeButton.disabled = false;
           removeButton.textContent = "Aus Favoriten entfernen";
           alert("Der Favorit konnte nicht entfernt werden.");
@@ -2216,6 +2296,8 @@
       if (!savedRecord) {
         throw new Error("Favorit wurde nach dem Speichern nicht gefunden");
       }
+
+      upsertFavoriteCache(savedRecord);
 
       currentFavoriteId = id;
       updateFavoriteButton(true);
@@ -2617,6 +2699,7 @@
       console.warn("Favoritenmigration wurde übersprungen", error);
     }
 
+    await loadFavoriteCache(true);
     await refreshGalleryFavoriteState();
     await refreshFavoriteViews();
   }
