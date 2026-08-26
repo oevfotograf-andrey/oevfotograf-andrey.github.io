@@ -690,3 +690,46 @@ h1 em{font-family:var(--serif);font-weight:400;letter-spacing:-.05em}
 .button.primary:disabled:focus-visible{
   outline:none;
 }
+
+
+/* Favoriten: eine gemeinsame, ruhige Bedienlogik für Fotos mit und ohne GPS. */
+.favorite-detail-title-row{
+  align-items:flex-start;
+}
+.favorite-detail-remove{
+  flex:0 0 auto;
+}
+.favorite-detail-location{
+  min-height:96px;
+}
+.favorite-detail-location .button{
+  flex:0 0 auto;
+}
+.favorite-detail-location-hint,
+.favorite-detail-action-hint{
+  display:none !important;
+}
+.favorite-location-card,
+.favorite-library-card{
+  -webkit-tap-highlight-color:transparent;
+}
+.favorite-location-card:focus-visible,
+.favorite-library-card:focus-visible,
+.favorite-remove:focus-visible,
+.favorite-detail-remove:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+.favorite-remove:disabled,
+.favorite-detail-remove:disabled{
+  pointer-events:none;
+  cursor:wait;
+}
+@media (max-width:600px){
+  .favorite-detail-title-row{
+    flex-direction:column;
+  }
+  .favorite-detail-remove{
+    width:100%;
+  }
+}

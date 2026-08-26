@@ -190,8 +190,7 @@
           <h3>Gespeicherte Orte</h3>
           <p>
             Nach der EXIF-Analyse kannst du ein Foto als Favorit auf diesem Gerät speichern.
-            Fotos mit GPS erscheinen hier mit ihrem tatsächlichen Aufnahmeort. Die Originaldatei
-            und die Metadaten bleiben lokal im Browser.
+            Fotos mit GPS erscheinen hier mit ihrem tatsächlichen Aufnahmeort. Es sind dieselben Favoriten wie im lokalen Fotoarchiv – keine zweite Kopie und kein separater Speicher.
           </p>
           <div id="favoriteLocations" class="favorite-location-list">
             <p class="favorite-empty">Noch keine Fotos mit GPS in den lokalen Favoriten gespeichert.</p>
@@ -219,7 +218,7 @@
           <p class="eyebrow">04 / FAVORITEN</p>
           <h2>Deine gespeicherten Fotos.</h2>
         </div>
-        <p>Alle lokalen Favoriten auf diesem Gerät an einem Ort – unabhängig davon, ob GPS-Daten vorhanden sind.</p>
+        <p>Alle lokalen Favoriten auf diesem Gerät an einem Ort. Fotos mit und ohne GPS werden identisch gespeichert, angezeigt und über dieselbe Funktion entfernt.</p>
       </div>
 
       <div class="favorites-library">
@@ -246,7 +245,6 @@
                 <h3 id="favoriteDetailTitle"></h3>
               </div>
               <button id="favoriteDetailRemove" class="favorite-detail-remove" type="button">Aus Favoriten entfernen</button>
-              <p id="favoriteDetailActionHint" class="favorite-detail-action-hint hidden" hidden></p>
             </div>
 
             <div id="favoriteDetailMetadata" class="favorite-detail-metadata"></div>
@@ -258,7 +256,6 @@
                 <span id="favoriteDetailCoordinates"></span>
               </div>
               <button id="favoriteDetailMapButton" class="button primary" type="button" disabled aria-disabled="true">Kein Ort verfügbar</button>
-              <p id="favoriteDetailLocationHint" class="favorite-detail-location-hint" hidden></p>
             </div>
           </div>
         </div>
